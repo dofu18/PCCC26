@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PCCC26 · Mockup giao diện v1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Be+Vietnam+Pro:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tokens.css">
+<style>
+/* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 */
+/* Hallmark · macrostructure: Manifesto · genre: playful · nav: N7 Brutal slab · footer: Ft5 Statement
+ * theme: custom (tuned) · vibe: "poster cứu hỏa, mảng màu bold, thi đấu"
+ * display: Anton · body: Be Vietnam Pro · axes: light / display-condensed-bold / warm
+ * tokens: tokens.css · studied: no
+ */
+/* ── Reset / base ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { overflow-x: clip; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--lh-body);
+  font-weight: 400;
+}
+img, svg { max-width: 100%; }
+[hidden] { display: none !important; }
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-style: normal;
+  line-height: var(--lh-display);
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  margin: 0;
+}
+p { margin: 0; }
+:focus-visible {
+  outline: var(--rule-heavy) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* ── Mockup chrome (chỉ tồn tại trong file xem thử) ─────── */
+.mock {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  border-bottom: var(--rule-heavy) solid var(--color-accent);
+}
+.mock__label {
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-on-ink-2);
+  padding: var(--space-xs) var(--space-md) 0;
+}
+.mock__tabs {
+  display: flex;
+  gap: var(--space-2xs);
+  overflow-x: auto;
+  padding: var(--space-xs) var(--space-md) var(--space-sm);
+  scrollbar-width: thin;
+}
+.mock__tab {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: var(--space-xs) var(--space-sm);
+  background: transparent;
+  color: var(--color-on-ink-2);
+  border: var(--rule-slab) solid transparent;
+  border-radius: var(--radius-none);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur-short) var(--ease-out),
+              background-color var(--dur-short) var(--ease-out);
+}
+.mock__tab[aria-selected="true"] {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .mock__tab:hover { color: var(--color-on-ink); }
+}
+
+/* ── Screen shell ───────────────────────────────────────── */
+.screen { display: block; }
+.screen__note {
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-paper-3);
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+}
+.wrap {
+  width: 100%;
+  max-width: 46rem;
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 5vw, 2.5rem);
+}
+.wrap--wide { max-width: 68rem; }
+
+/* Manifesto divider language: khối màu bleed, không hairline */
+.band { padding-block: var(--space-xl); }
+.band--ink   { background: var(--color-ink);     color: var(--color-on-ink); }
+.band--paper { background: var(--color-paper); }
+.band--paper2{ background: var(--color-paper-2); }
+.band--tight { padding-block: var(--space-lg); }
+.band--hero  { padding-block: var(--space-lg) var(--space-xl); }
+
+/* ── App nav: N7 Brutal slab ────────────────────────────── */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding-block: var(--space-sm);
+  border-bottom: var(--rule-slab) solid currentColor;
+}
+.nav__mark {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.nav__mark span { color: var(--color-accent); }
+.band--ink .nav__mark span { color: var(--color-accent-hi); }
+.nav__meta {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.band--ink .nav__meta { color: var(--color-on-ink-2); }
+
+/* ── Type helpers ───────────────────────────────────────── */
+.display   { font-size: var(--text-display); }
+.display-s { font-size: var(--text-display-s); }
+.hl {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  padding-inline: 0.12em;
+  display: inline-block;
+  transform: rotate(-2deg);
+}
+.lede {
+  font-size: var(--text-md);
+  max-width: 46ch;
+  color: var(--color-ink-2);
+}
+.band--ink .lede { color: var(--color-on-ink-2); }
+.meta {
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.num { font-variant-numeric: tabular-nums; }
+.score, .foot__say { overflow-wrap: anywhere; min-width: 0; }
+.whoami {
+  font-size: var(--text-sm);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+/* ── Buttons: khối đặc oversized (Manifesto voice) ──────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: var(--space-sm) var(--space-lg);
+  border: var(--rule-slab) solid var(--color-ink);
+  border-radius: var(--radius-none);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  font: inherit;
+  font-weight: 800;
+  font-size: var(--text-base);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--dur-short) var(--ease-out),
+              color var(--dur-short) var(--ease-out),
+              transform var(--dur-micro) var(--ease-out);
+}
+.btn:active { transform: translateY(2px); }
+.btn--primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+  width: 100%;
+  min-height: 60px;
+  font-size: var(--text-md);
+}
+.btn--ghost {
+  background: transparent;
+  color: var(--color-ink);
+}
+.btn--danger {
+  background: transparent;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn--primary:hover { background: var(--color-accent-2); border-color: var(--color-accent-2); }
+  .btn--ghost:hover   { background: var(--color-ink); color: var(--color-on-ink); }
+  .btn--danger:hover  { background: var(--color-accent); color: var(--color-accent-ink); }
+}
+.btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-row { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+
+/* ── Form ───────────────────────────────────────────────── */
+.field { display: block; margin-bottom: var(--space-md); }
+.field__label {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-2xs);
+}
+.field__input {
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  border: var(--rule-slab) solid var(--color-ink);
+  border-radius: var(--radius-none);
+  font: inherit;
+  font-size: var(--text-md);
+  transition: border-color var(--dur-short) var(--ease-out),
+              background-color var(--dur-short) var(--ease-out);
+}
+.field__input::placeholder { color: var(--color-muted); }
+.field__input:focus-visible { border-color: var(--color-accent); }
+.field__input:disabled {
+  background: var(--color-paper-3);
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+.field__input[aria-invalid="true"] { border-color: var(--color-accent); background: var(--color-paper-2); }
+.field__hint--error { color: var(--color-accent); font-weight: 600; }
+.field__hint {
+  display: block;
+  margin-top: var(--space-2xs);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+}
+.field__input--code {
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Question screen ────────────────────────────────────── */
+.qbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding-block: var(--space-sm);
+}
+.qbar__count { font-size: var(--text-sm); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.qbar__timer {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  color: var(--color-accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.timer-track {
+  height: 10px;
+  background: var(--color-paper-3);
+  overflow: hidden;
+}
+.timer-fill {
+  height: 100%;
+  background: var(--color-accent);
+  transform-origin: left center;
+  animation: countdown 20s linear forwards;
+}
+@keyframes countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+.qtext {
+  font-family: var(--font-body);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: var(--text-xl);
+  font-weight: 800;
+  line-height: 1.28;
+  margin-block: var(--space-lg) var(--space-md);
+}
+.qfig {
+  margin: 0 0 var(--space-lg);
+  border: var(--rule-slab) solid var(--color-ink);
+  background: var(--color-paper-2);
+}
+.qfig svg { display: block; width: 100%; height: auto; }
+.qfig figcaption {
+  padding: var(--space-xs) var(--space-sm);
+  border-top: var(--rule-slab) solid var(--color-ink);
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-2);
+}
+
+.opts { display: grid; gap: var(--space-sm); grid-template-columns: minmax(0, 1fr); }
+.opt {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 60px;
+  border: var(--rule-slab) solid var(--color-ink);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: var(--text-md);
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  transition: background-color var(--dur-short) var(--ease-out),
+              transform var(--dur-micro) var(--ease-out);
+}
+.opt:active { transform: translateY(2px); }
+.opt:disabled { cursor: default; }
+.opt__key {
+  display: grid;
+  place-items: center;
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+.opt__text { display: flex; align-items: center; padding: var(--space-sm) var(--space-md); }
+@media (hover: hover) and (pointer: fine) {
+  .opt:hover { background: var(--color-paper-3); }
+}
+.opt--ok  { border-color: var(--color-ok); background: var(--color-ok); color: var(--color-ok-ink); }
+.opt--ok  .opt__key { background: var(--color-ok-2); color: var(--color-ok-ink); }
+.opt--no  { border-color: var(--color-no); background: var(--color-no); color: var(--color-no-ink); }
+.opt--no  .opt__key { background: var(--color-no-2); color: var(--color-no-ink); }
+.opt--no .opt__text { text-decoration: line-through; text-decoration-thickness: 2px; }
+
+/* ── Feedback slab ──────────────────────────────────────── */
+.verdict {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: var(--space-sm);
+  align-items: center;
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  animation: slab var(--dur-long) var(--ease-out) both;
+}
+@keyframes slab { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.verdict--ok { background: var(--color-ok); color: var(--color-ok-ink); }
+.verdict--no { background: var(--color-no); color: var(--color-no-ink); }
+.verdict svg { display: block; width: 44px; height: 44px; }
+.verdict__title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.verdict__points { font-weight: 800; font-variant-numeric: tabular-nums; }
+.explain {
+  padding: var(--space-md);
+  background: var(--color-paper-2);
+  border-left: var(--rule-heavy) solid var(--color-ink);
+  font-size: var(--text-base);
+  color: var(--color-ink-2);
+  max-width: 62ch;
+}
+
+/* ── Result screen ──────────────────────────────────────── */
+.score {
+  font-family: var(--font-display);
+  font-size: var(--text-score);
+  line-height: 0.92;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+.facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-md) var(--space-lg);
+  margin-block: var(--space-lg);
+}
+.fact__k { font-size: var(--text-xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-muted); }
+.fact__v { font-size: var(--text-lg); font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* ── Leaderboard ────────────────────────────────────────── */
+.board { display: grid; gap: var(--space-2xs); }
+.row {
+  display: grid;
+  grid-template-columns: 3ch minmax(0, 1fr) auto;
+  gap: var(--space-sm);
+  align-items: baseline;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-paper-2);
+}
+.row--lead {
+  background: var(--color-paper-2);
+  border-left: var(--rule-heavy) solid var(--color-accent);
+  padding-left: calc(var(--space-md) - var(--rule-heavy));
+}
+.row--lead .row__rank { color: var(--color-accent); }
+.row--self { outline: var(--rule-slab) solid var(--color-ink); outline-offset: -2px; }
+.row__rank { font-family: var(--font-display); font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
+.row__who { min-width: 0; }
+.row__code { font-weight: 800; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.row__name { font-size: var(--text-sm); color: var(--color-ink-2); }
+.row__pts { font-weight: 800; font-size: var(--text-md); font-variant-numeric: tabular-nums; }
+
+/* Màn chiếu — chữ to, đọc từ xa */
+.stage .row { background: var(--color-ink-raised); padding: var(--space-md) var(--space-lg); }
+.stage .row--lead { background: var(--color-ink-raised); border-left: var(--rule-heavy) solid var(--color-accent); }
+.stage .row--lead .row__rank { color: var(--color-accent-hi); }
+.stage .row__rank { font-size: var(--text-2xl); }
+.stage .row__code { font-size: var(--text-md); }
+.stage .row__name { color: var(--color-on-ink-2); }
+.stage .row__pts { font-size: var(--text-xl); }
+.stage .row { color: var(--color-on-ink); }
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: var(--text-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-on-ink-2);
+}
+.live__dot { width: 10px; height: 10px; background: var(--color-accent); }
+
+@media (min-width: 60rem) {
+  .stage .row__rank { font-size: var(--text-3xl); }
+  .stage .row__pts  { font-size: var(--text-2xl); }
+}
+
+/* ── Admin ──────────────────────────────────────────────── */
+.panel {
+  border: var(--rule-slab) solid var(--color-ink);
+  background: var(--color-paper-2);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+.panel h3 { font-size: var(--text-lg); margin-bottom: var(--space-xs); }
+.panel--danger { border-color: var(--color-accent); background: var(--color-paper); }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-xs) var(--space-md); }
+.kv dt { font-size: var(--text-sm); color: var(--color-muted); }
+.kv dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; }
+
+dialog {
+  width: min(30rem, calc(100% - 2rem));
+  padding: 0;
+  border: var(--rule-heavy) solid var(--color-ink);
+  border-radius: var(--radius-none);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+dialog::backdrop { background: var(--color-scrim); }
+.dlg { padding: var(--space-lg); }
+.dlg h2 { font-size: var(--text-xl); margin-bottom: var(--space-sm); }
+.dlg p { margin-bottom: var(--space-md); color: var(--color-ink-2); }
+.dlg__check {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: flex-start;
+  padding: var(--space-sm);
+  background: var(--color-paper-2);
+  margin-bottom: var(--space-md);
+  font-size: var(--text-sm);
+}
+.dlg__check input { width: 22px; height: 22px; margin: 0; accent-color: var(--color-accent); flex: 0 0 auto; }
+
+/* ── Footer: Ft5 Statement ──────────────────────────────── */
+.foot { padding-block: var(--space-xl); background: var(--color-ink); color: var(--color-on-ink); }
+.foot__say {
+  font-family: var(--font-display);
+  font-size: var(--text-display-s);
+  line-height: var(--lh-display);
+  text-transform: uppercase;
+  max-width: 24ch;
+}
+.foot__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-lg);
+  margin-top: var(--space-lg);
+  font-size: var(--text-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-on-ink-2);
+}
+
+@media (min-width: 40rem) {
+  .opts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .facts { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .btn--primary { width: auto; min-width: 18rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 150ms !important;
+    transition-duration: 150ms !important;
+  }
+  .timer-fill { animation-duration: 20s !important; } /* functional: vẫn chạy */
+  .verdict { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Mockup-only chrome: bộ chọn màn hình. Không thuộc sản phẩm. -->
+<div class="mock">
+  <p class="mock__label">Mockup v1 · chọn màn hình</p>
+  <div class="mock__tabs" role="tablist" aria-label="Màn hình">
+    <button class="mock__tab" role="tab" aria-selected="true"  aria-controls="s-join"   id="t-join">Vào phòng</button>
+    <button class="mock__tab" role="tab" aria-selected="false" aria-controls="s-quiz"   id="t-quiz">Câu hỏi</button>
+    <button class="mock__tab" role="tab" aria-selected="false" aria-controls="s-verdict" id="t-verdict">Đúng / Sai</button>
+    <button class="mock__tab" role="tab" aria-selected="false" aria-controls="s-result" id="t-result">Kết quả</button>
+    <button class="mock__tab" role="tab" aria-selected="false" aria-controls="s-stage"  id="t-stage">Màn chiếu</button>
+    <button class="mock__tab" role="tab" aria-selected="false" aria-controls="s-admin"  id="t-admin">Admin</button>
+  </div>
+</div>
+
+<!-- ══════════ 1 · VÀO PHÒNG ══════════ -->
+<main class="screen" id="s-join" role="tabpanel" aria-labelledby="t-join">
+  <p class="screen__note">Thí sinh mở link hoặc quét QR → màn hình này. Kiểm tra định dạng mã số ngay khi rời ô nhập.</p>
+
+  <section class="band band--ink band--tight">
+    <div class="wrap">
+      <nav class="nav" aria-label="Chính">
+        <span class="nav__mark">PCCC<span>26</span></span>
+        <span class="nav__meta">Lượt 3 · Đang mở</span>
+      </nav>
+    </div>
+  </section>
+
+  <section class="band band--ink band--hero">
+    <div class="wrap">
+      <h1 class="display">An toàn là <span class="hl">thói quen</span>.</h1>
+      <p class="lede" style="margin-top: var(--space-lg)">Mười câu hỏi. Hai mươi giây mỗi câu. Trả lời nhanh hơn thì được nhiều điểm hơn.</p>
+    </div>
+  </section>
+
+  <section class="band band--paper">
+    <div class="wrap">
+      <form novalidate>
+        <label class="field">
+          <span class="field__label">Mã số sinh viên</span>
+          <input class="field__input field__input--code" type="text" inputmode="text"
+                 autocomplete="off" spellcheck="false" placeholder="HE180234" maxlength="8" value="HE180234">
+          <span class="field__hint">Hai chữ cái, sáu chữ số — ví dụ HE180234.</span>
+        </label>
+        <label class="field">
+          <span class="field__label">Họ và tên</span>
+          <input class="field__input" type="text" autocomplete="name" placeholder="Trần Minh Khôi" value="Trần Minh Khôi">
+          <span class="field__hint">Tên hiển thị trên bảng xếp hạng: HE180234 - Trần Minh Khôi</span>
+        </label>
+        <button class="btn btn--primary" type="button" id="open-dup">Vào phòng thi</button>
+      </form>
+
+      <p class="meta" style="margin-top: var(--space-xl); margin-bottom: var(--space-sm)">Khi mã số sai định dạng</p>
+      <form novalidate>
+        <label class="field">
+          <span class="field__label">Mã số sinh viên</span>
+          <input class="field__input field__input--code" type="text" value="HE1802" aria-invalid="true"
+                 aria-describedby="err-code" autocomplete="off" spellcheck="false">
+          <span class="field__hint field__hint--error" id="err-code">Thiếu 2 chữ số. Mã số gồm hai chữ cái và sáu chữ số, ví dụ HE180234.</span>
+        </label>
+        <button class="btn btn--primary" type="button" disabled>Vào phòng thi</button>
+      </form>
+      <p class="meta" style="margin-top: var(--space-md)">Bấm để xem pop-up khi mã số đã tham gia lượt này.</p>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="wrap">
+      <p class="foot__say">Biết cách xử lý trước khi cần đến nó.</p>
+      <div class="foot__meta">
+        <span>Sự kiện PCCC26</span>
+        <span>Đại học FPT</span>
+        <span>Hỗ trợ tại bàn tiếp đón</span>
+      </div>
+    </div>
+  </footer>
+</main>
+
+<!-- ══════════ 2 · CÂU HỎI ══════════ -->
+<main class="screen" id="s-quiz" role="tabpanel" aria-labelledby="t-quiz" hidden>
+  <p class="screen__note">Thanh đỏ là đồng hồ 20 giây. Hết giờ tự sang câu sau và tính 0 điểm. Thứ tự câu và thứ tự đáp án được trộn riêng cho từng người.</p>
+
+  <section class="band band--paper2 band--tight">
+    <div class="wrap">
+      <nav class="nav" aria-label="Chính">
+        <span class="nav__mark">PCCC<span>26</span></span>
+        <span class="nav__meta num">HE180234</span>
+      </nav>
+      <div class="qbar">
+        <span class="qbar__count num">Câu 3 / 10</span>
+        <span class="qbar__timer num" aria-live="off">14</span>
+      </div>
+    </div>
+    <div class="timer-track" role="img" aria-label="Còn 14 giây">
+      <div class="timer-fill"></div>
+    </div>
+  </section>
+
+  <section class="band band--paper">
+    <div class="wrap">
+      <h2 class="qtext">
+        Số điện thoại gọi lực lượng Cảnh sát phòng cháy chữa cháy là số nào?
+      </h2>
+
+      <figure class="qfig">
+        <svg viewBox="0 0 640 300" role="img" aria-label="Hình minh hoạ bình chữa cháy bột ABC">
+          <rect width="640" height="300" fill="var(--color-paper-3)"/>
+          <rect x="352" y="0" width="288" height="300" fill="var(--color-paper-2)"/>
+          <!-- bình chữa cháy, mảng phẳng -->
+          <rect x="236" y="96" width="104" height="164" fill="var(--color-accent)"/>
+          <rect x="236" y="96" width="104" height="20" fill="var(--color-accent-2)"/>
+          <rect x="272" y="60" width="32" height="40" fill="var(--color-no)"/>
+          <rect x="248" y="44" width="98" height="18" fill="var(--color-no)"/>
+          <path d="M346 52 q60 14 44 74" stroke="var(--color-no)" stroke-width="12" fill="none"/>
+          <rect x="256" y="150" width="64" height="52" fill="var(--color-on-ink)"/>
+          <text x="288" y="186" text-anchor="middle" font-family="Anton, sans-serif" font-size="34" fill="var(--color-no)">ABC</text>
+          <!-- mảng khói/lửa cách điệu -->
+          <path d="M420 260 l40 -78 l30 44 l34 -96 l40 130 z" fill="var(--color-no)"/>
+        </svg>
+        <figcaption>Ảnh minh hoạ — BTC dán URL ảnh vào cột <span class="num">image</span> của file Excel</figcaption>
+      </figure>
+
+      <div class="opts">
+        <button class="opt" type="button"><span class="opt__key">A</span><span class="opt__text num">113</span></button>
+        <button class="opt" type="button"><span class="opt__key">B</span><span class="opt__text num">114</span></button>
+        <button class="opt" type="button"><span class="opt__key">C</span><span class="opt__text num">115</span></button>
+        <button class="opt" type="button"><span class="opt__key">D</span><span class="opt__text num">116</span></button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ══════════ 3 · ĐÚNG / SAI ══════════ -->
+<main class="screen" id="s-verdict" role="tabpanel" aria-labelledby="t-verdict" hidden>
+  <p class="screen__note">Hai trạng thái sau khi chọn đáp án. Đúng dùng khối xanh, sai dùng khối mực đậm kèm gạch ngang — không dùng đỏ để tránh lẫn với màu thương hiệu, và luôn có icon nên không phụ thuộc vào màu.</p>
+
+  <section class="band band--paper">
+    <div class="wrap">
+      <p class="meta" style="margin-bottom: var(--space-sm)">Trạng thái 1 — trả lời đúng</p>
+      <div class="verdict verdict--ok">
+        <svg viewBox="0 0 44 44" aria-hidden="true"><path d="M8 24 l10 10 l18 -24" stroke="currentColor" stroke-width="6" fill="none" stroke-linecap="square"/></svg>
+        <div>
+          <p class="verdict__title">Chính xác</p>
+          <p class="verdict__points num">+842 điểm · trả lời sau 4,3 giây</p>
+        </div>
+      </div>
+      <div class="opts" style="margin-bottom: var(--space-md)">
+        <button class="opt opt--ok" type="button" disabled><span class="opt__key">B</span><span class="opt__text num">114</span></button>
+      </div>
+      <p class="explain">114 là số gọi lực lượng Cảnh sát phòng cháy chữa cháy và cứu nạn cứu hộ. 113 là Cảnh sát phản ứng nhanh, 115 là cấp cứu y tế.</p>
+    </div>
+  </section>
+
+  <section class="band band--paper2">
+    <div class="wrap">
+      <p class="meta" style="margin-bottom: var(--space-sm)">Trạng thái 2 — trả lời sai hoặc hết giờ</p>
+      <div class="verdict verdict--no">
+        <svg viewBox="0 0 44 44" aria-hidden="true">
+          <path d="M11 11 L33 33 M33 11 L11 33" stroke="currentColor" stroke-width="6" stroke-linecap="square"/>
+        </svg>
+        <div>
+          <p class="verdict__title">Chưa đúng</p>
+          <p class="verdict__points num">0 điểm · đáp án đúng là B</p>
+        </div>
+      </div>
+      <div class="opts" style="margin-bottom: var(--space-md)">
+        <button class="opt opt--no" type="button" disabled><span class="opt__key">C</span><span class="opt__text num">115</span></button>
+        <button class="opt opt--ok" type="button" disabled><span class="opt__key">B</span><span class="opt__text num">114</span></button>
+      </div>
+      <p class="explain">115 là cấp cứu y tế. Khi có cháy, gọi 114 trước — sau đó mới gọi 115 nếu có người bị thương.</p>
+    </div>
+  </section>
+</main>
+
+<!-- ══════════ 4 · KẾT QUẢ ══════════ -->
+<main class="screen" id="s-result" role="tabpanel" aria-labelledby="t-result" hidden>
+  <p class="screen__note">Hiện ngay sau câu cuối. Thứ hạng cập nhật khi có người nộp bài mới. Toàn bộ số liệu dưới đây là dữ liệu mẫu để xem bố cục.</p>
+
+  <section class="band band--paper2 band--tight">
+    <div class="wrap">
+      <nav class="nav" aria-label="Chính">
+        <span class="nav__mark">PCCC<span>26</span></span>
+        <span class="nav__meta">Đã nộp bài</span>
+      </nav>
+    </div>
+  </section>
+
+  <section class="band band--paper">
+    <div class="wrap">
+      <p class="whoami"><span class="num">HE180234</span> - Trần Minh Khôi</p>
+      <p class="score num">7 240</p>
+      <p class="lede" style="margin-top: var(--space-sm)">điểm — đứng thứ hai trong lượt 3.</p>
+
+      <dl class="facts">
+        <div><dt class="fact__k">Câu đúng</dt><dd class="fact__v num">8 / 10</dd></div>
+        <div><dt class="fact__k">Tổng thời gian</dt><dd class="fact__v num">1 phút 52</dd></div>
+        <div><dt class="fact__k">Nhanh nhất</dt><dd class="fact__v num">2,1 giây</dd></div>
+        <div><dt class="fact__k">Hết giờ</dt><dd class="fact__v num">1 câu</dd></div>
+      </dl>
+
+      <div class="btn-row">
+        <button class="btn btn--ghost" type="button">Xem lại bài làm</button>
+        <button class="btn" type="button">Bảng xếp hạng</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="band band--paper2">
+    <div class="wrap">
+      <h2 class="display-s" style="margin-bottom: var(--space-lg)">Bảng xếp hạng lượt 3</h2>
+      <div class="board">
+        <div class="row row--lead"><span class="row__rank num">1</span><span class="row__who"><span class="row__code num">HE181902</span><br><span class="row__name">Lê Thu Hà</span></span><span class="row__pts num">8 105</span></div>
+        <div class="row row--self"><span class="row__rank num">2</span><span class="row__who"><span class="row__code num">HE180234</span><br><span class="row__name">Trần Minh Khôi</span></span><span class="row__pts num">7 240</span></div>
+        <div class="row"><span class="row__rank num">3</span><span class="row__who"><span class="row__code num">HS183377</span><br><span class="row__name">Phạm Quốc Đạt</span></span><span class="row__pts num">7 010</span></div>
+        <div class="row"><span class="row__rank num">4</span><span class="row__who"><span class="row__code num">HE182145</span><br><span class="row__name">Võ Ngọc Ánh</span></span><span class="row__pts num">6 588</span></div>
+        <div class="row"><span class="row__rank num">5</span><span class="row__who"><span class="row__code num">HA180991</span><br><span class="row__name">Bùi Thanh Trúc</span></span><span class="row__pts num">6 240</span></div>
+      </div>
+      <p class="meta" style="margin-top: var(--space-md)">Dòng có viền là bạn.</p>
+    </div>
+  </section>
+</main>
+
+<!-- ══════════ 5 · MÀN CHIẾU ══════════ -->
+<main class="screen stage" id="s-stage" role="tabpanel" aria-labelledby="t-stage" hidden>
+  <p class="screen__note">Mở trên laptop nối máy chiếu. Chữ cỡ lớn, đọc được từ cuối hội trường. Tự cập nhật, không cần bấm.</p>
+
+  <section class="band band--ink" style="min-height: 80dvh">
+    <div class="wrap wrap--wide">
+      <nav class="nav" aria-label="Chính">
+        <span class="nav__mark">PCCC<span>26</span></span>
+        <span class="live"><span class="live__dot" aria-hidden="true"></span>Lượt 3 · 12 thí sinh</span>
+      </nav>
+
+      <h2 class="display" style="margin-block: var(--space-xl) var(--space-lg)">Xếp hạng</h2>
+
+      <div class="board">
+        <div class="row row--lead"><span class="row__rank num">1</span><span class="row__who"><span class="row__code num">HE181902</span><br><span class="row__name">Lê Thu Hà</span></span><span class="row__pts num">8 105</span></div>
+        <div class="row"><span class="row__rank num">2</span><span class="row__who"><span class="row__code num">HE180234</span><br><span class="row__name">Trần Minh Khôi</span></span><span class="row__pts num">7 240</span></div>
+        <div class="row"><span class="row__rank num">3</span><span class="row__who"><span class="row__code num">HS183377</span><br><span class="row__name">Phạm Quốc Đạt</span></span><span class="row__pts num">7 010</span></div>
+        <div class="row"><span class="row__rank num">4</span><span class="row__who"><span class="row__code num">HE182145</span><br><span class="row__name">Võ Ngọc Ánh</span></span><span class="row__pts num">6 588</span></div>
+        <div class="row"><span class="row__rank num">5</span><span class="row__who"><span class="row__code num">HA180991</span><br><span class="row__name">Bùi Thanh Trúc</span></span><span class="row__pts num">6 240</span></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ══════════ 6 · ADMIN ══════════ -->
+<main class="screen" id="s-admin" role="tabpanel" aria-labelledby="t-admin" hidden>
+  <p class="screen__note">Chỉ BTC vào được bằng mật khẩu. Nút reset có pop-up xác nhận, và chỉ bấm được sau khi tick đã xuất Excel.</p>
+
+  <section class="band band--paper2 band--tight">
+    <div class="wrap">
+      <nav class="nav" aria-label="Chính">
+        <span class="nav__mark">PCCC<span>26</span></span>
+        <span class="nav__meta">Ban tổ chức</span>
+      </nav>
+    </div>
+  </section>
+
+  <section class="band band--paper">
+    <div class="wrap">
+      <h2 class="display-s" style="margin-bottom: var(--space-lg)">Lượt đang chạy</h2>
+
+      <div class="panel">
+        <h3>Lượt 3 — Khoa Công nghệ</h3>
+        <dl class="kv">
+          <dt>Thí sinh đã vào</dt><dd class="num">12</dd>
+          <dt>Đã nộp bài</dt><dd class="num">9</dd>
+          <dt>Bộ câu hỏi</dt><dd>PCCC cơ bản · 10 câu</dd>
+          <dt>Bắt đầu</dt><dd class="num">14:20</dd>
+        </dl>
+      </div>
+
+      <div class="btn-row" style="margin-bottom: var(--space-xl)">
+        <button class="btn btn--ghost" type="button">Xuất Excel</button>
+        <button class="btn btn--ghost" type="button">Kết thúc lượt</button>
+      </div>
+
+      <div class="panel panel--danger">
+        <h3>Reset để chạy nhóm kế tiếp</h3>
+        <p style="color: var(--color-ink-2); margin-bottom: var(--space-md)">
+          Lượt hiện tại được chuyển vào lịch sử — vẫn xuất lại Excel được bất kỳ lúc nào. Bộ câu hỏi giữ nguyên.
+        </p>
+        <button class="btn btn--danger" type="button" id="open-reset">Reset session</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ══════════ Dialogs ══════════ -->
+<dialog id="dlg-dup" aria-labelledby="dup-title">
+  <div class="dlg">
+    <h2 id="dup-title">MSSV này đã tham gia</h2>
+    <p>Mã số <strong class="num">HE180234</strong> đã có một lượt làm trong session này. Bạn có chắc muốn dùng MSSV này để tiếp tục? Bảng xếp hạng sẽ lấy lượt có điểm cao nhất.</p>
+    <div class="btn-row">
+      <button class="btn btn--primary" type="button" data-close="dlg-dup" style="width:auto">Tiếp tục</button>
+      <button class="btn btn--ghost" type="button" data-close="dlg-dup">Đổi mã số</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlg-reset" aria-labelledby="reset-title">
+  <div class="dlg">
+    <h2 id="reset-title">Reset session?</h2>
+    <p>Lượt 3 (12 thí sinh, 9 bài đã nộp) sẽ được đóng và chuyển vào lịch sử. Thí sinh đang làm bài sẽ bị ngắt.</p>
+    <label class="dlg__check">
+      <input type="checkbox" id="chk-export">
+      <span>Tôi đã xuất file Excel bảng xếp hạng của lượt này.</span>
+    </label>
+    <div class="btn-row">
+      <button class="btn btn--danger" type="button" id="do-reset" disabled>Reset session</button>
+      <button class="btn btn--ghost" type="button" data-close="dlg-reset">Huỷ</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+// Bộ chọn màn hình (chỉ dành cho mockup)
+const tabs = [...document.querySelectorAll('.mock__tab')];
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => {
+      const panel = document.getElementById(t.getAttribute('aria-controls'));
+      const on = t === tab;
+      t.setAttribute('aria-selected', String(on));
+      panel.hidden = !on;
+    });
+    tab.focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  });
+});
+
+// Dialogs
+const show = id => document.getElementById(id).showModal();
+document.getElementById('open-dup').addEventListener('click', () => show('dlg-dup'));
+document.getElementById('open-reset').addEventListener('click', () => show('dlg-reset'));
+document.querySelectorAll('[data-close]').forEach(b =>
+  b.addEventListener('click', () => document.getElementById(b.dataset.close).close())
+);
+const chk = document.getElementById('chk-export');
+chk.addEventListener('change', () => { document.getElementById('do-reset').disabled = !chk.checked; });
+document.getElementById('do-reset').addEventListener('click', () => document.getElementById('dlg-reset').close());
+</script>
+</body>
+</html>

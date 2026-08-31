@@ -1,0 +1,88 @@
+/* Hallmark · macrostructure: Manifesto · genre: playful · nav: N7 Brutal slab · footer: Ft5 Statement
+ * theme: custom (tuned) · vibe: "poster cứu hỏa, mảng màu bold, thi đấu"
+ * paper: oklch(95.5% 0.014 60) · accent: oklch(48% 0.20 30)
+ * display: Anton · body: Be Vietnam Pro · axes: light / display-condensed-bold / warm
+ * audience: sinh viên FPT · use: trả lời quiz PCCC + xem xếp hạng · tone: poster tuyên truyền hiện đại
+ * enrichment: E-B hand-built SVG (bình chữa cháy phẳng) · studied: no · context: explicit
+ */
+
+:root {
+  /* ---- Paper / ink / neutrals (tinted warm, hue 40–60) ---- */
+  --color-paper:      oklch(95.5% 0.014 60);
+  --color-paper-2:    oklch(92.5% 0.016 60);
+  --color-paper-3:    oklch(88.0% 0.018 58);
+  --color-ink:        oklch(19.0% 0.014 40);
+  --color-ink-2:      oklch(38.0% 0.014 40);
+  --color-rule:       oklch(78.0% 0.016 55);
+  --color-muted:      oklch(46.0% 0.016 45);
+  --color-on-ink:     oklch(96.0% 0.012 60);
+  --color-on-ink-2:   oklch(74.0% 0.012 55);
+
+  /* ---- Accent: đỏ cứu hỏa. Chỉ dùng cho CTA, timer, trạng thái active ---- */
+  --color-accent:     oklch(48.0% 0.20 30);
+  --color-accent-2:   oklch(41.0% 0.20 30);   /* hover/pressed */
+  --color-accent-ink: oklch(96.0% 0.012 60);  /* chữ trên nền accent */
+  --color-focus:      oklch(52.0% 0.22 30);
+  --color-accent-hi:  oklch(66.0% 0.19 32);   /* accent đọc được trên nền mực */
+  --color-scrim:      oklch(19.0% 0.014 40 / 0.62);
+
+  /* ---- Semantic: đúng = xanh, sai = mực đậm (không dùng đỏ) ---- */
+  --color-ok:         oklch(46.0% 0.13 150);
+  --color-ok-ink:     oklch(97.0% 0.012 150);
+  --color-no:         oklch(26.0% 0.016 40);
+  --color-no-ink:     oklch(94.0% 0.012 50);
+  --color-ok-2:       oklch(36.0% 0.13 150);  /* khối chữ cái trên nền đúng */
+  --color-no-2:       oklch(16.0% 0.016 40);  /* khối chữ cái trên nền sai */
+  --color-ink-raised: oklch(24.0% 0.014 40);  /* bề mặt nâng trên nền mực */
+
+  /* ---- Type ---- */
+  --font-display: "Anton", "Be Vietnam Pro", "Arial Narrow", system-ui, sans-serif;
+  --font-body:    "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+
+  --text-xs:      0.8rem;
+  --text-sm:      0.9rem;
+  --text-base:    1rem;
+  --text-md:      1.125rem;
+  --text-lg:      1.375rem;
+  --text-xl:      1.75rem;
+  --text-2xl:     2.25rem;
+  --text-3xl:     3rem;
+  --text-display-s: clamp(2rem, 7vw + 0.5rem, 3.25rem);
+  --text-display:   clamp(2.5rem, 10vw + 0.5rem, 5.25rem);
+  --text-score:     clamp(3rem, 14vw, 6.5rem);
+
+  --lh-display:   1.12;   /* cao hơn chuẩn all-caps: dấu tiếng Việt chồng lên dòng trên */
+  --lh-body:      1.6;
+
+  /* ---- Space (4pt) ---- */
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs:  0.5rem;
+  --space-sm:  0.75rem;
+  --space-md:  1rem;
+  --space-lg:  1.5rem;
+  --space-xl:  2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+
+  /* ---- Motion ---- */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:     cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 110ms;
+  --dur-short: 200ms;
+  --dur-long:  400ms;
+
+  /* ---- Slab geometry: poster = góc vuông, viền dày ---- */
+  --rule-hair:  1px;
+  --rule-slab:  2px;
+  --rule-heavy: 4px;
+  --radius-none: 0;
+  --radius-sm:   2px;
+
+  /* ---- Z ---- */
+  --z-base: 1;
+  --z-raised: 10;
+  --z-sticky: 200;
+  --z-modal: 400;
+}
