@@ -12,7 +12,7 @@ export default async function JoinPage() {
 
   return (
     <>
-      <main>
+      <main className="page-in">
         <section className="band band--ink band--tight">
           <div className="wrap">
             <Nav meta={session ? `${session.name} · đang mở` : "Chưa mở lượt"} />

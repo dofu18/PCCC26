@@ -588,6 +588,70 @@ dialog::backdrop { background: var(--color-scrim); }
   flex: 0 0 auto;
 }
 
+/* ── Nút "?" giải thích + dialog rộng ───────────────────── */
+.field__labelrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-2xs);
+}
+.field__labelrow .field__label { margin-bottom: 0; }
+
+.help {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: var(--rule-slab) solid var(--color-ink);
+  border-radius: var(--radius-none);
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--dur-short) var(--ease-out),
+              color var(--dur-short) var(--ease-out),
+              transform var(--dur-micro) var(--ease-out);
+}
+.help:active { transform: translate(0, 2px); }
+@media (hover: hover) and (pointer: fine) {
+  .help:hover { background: var(--color-ink); color: var(--color-on-ink); }
+}
+
+dialog.dialog--wide { width: min(52rem, calc(100% - 2rem)); }
+.dlg--scroll { max-height: 86dvh; overflow-y: auto; overscroll-behavior: contain; }
+.dlg h3 {
+  font-size: var(--text-md);
+  margin-top: var(--space-lg);
+  margin-bottom: var(--space-xs);
+}
+.dlg .table code,
+.dlg code {
+  background: var(--color-paper-3);
+  padding: 0 var(--space-2xs);
+  font-size: 0.92em;
+}
+.dlg ul {
+  margin: 0;
+  padding-left: 1.15rem;
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+}
+.dlg ul li { margin-bottom: var(--space-2xs); }
+.dlg__foot {
+  position: sticky;
+  bottom: calc(-1 * var(--space-lg));
+  margin-top: var(--space-lg);
+  padding-block: var(--space-md);
+  background: var(--color-paper);
+  border-top: var(--rule-slab) solid var(--color-ink);
+}
+.req { font-weight: 800; color: var(--color-accent); }
+
 /* ── Footer: Ft5 Statement ──────────────────────────────── */
 .foot { padding-block: var(--space-xl); background: var(--color-ink); color: var(--color-on-ink); }
 .foot__say {
@@ -617,13 +681,171 @@ dialog::backdrop { background: var(--color-scrim); }
   max-width: 62ch;
 }
 
+/* ── Motion: chuyển động ─────────────────────────────────
+ * Poster brutalist thì chuyển động phải "dứt khoát" — vào nhanh, không nhún nhảy.
+ * Toàn bộ dùng CSS animation với fill-mode `backwards`: sau khi chạy xong, animation
+ * nhả transform lại cho :hover/:active của component (dùng `both` sẽ khoá cứng chúng).
+ */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes wipe {
+  from { opacity: 0; clip-path: inset(0 100% 0 0); }
+  to   { opacity: 1; clip-path: inset(0 -0.2em 0 0); }
+}
+@keyframes slam {
+  0%   { opacity: 0; transform: translateY(-20px) scale(1.05); }
+  65%  { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes pop  { 0% { transform: none; } 35% { transform: scale(1.035); } 100% { transform: none; } }
+@keyframes nudge {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+@keyframes tick  { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.16); } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+@keyframes sweep { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+html { scroll-behavior: smooth; }
+
+/* Vào trang: các band trượt lên lần lượt. Chỉ dùng ở trang tĩnh, không phải /quiz. */
+.page-in > * {
+  animation: rise var(--dur-long) var(--ease-out) backwards;
+}
+.page-in > *:nth-child(1) { animation-delay: 0ms; }
+.page-in > *:nth-child(2) { animation-delay: 70ms; }
+.page-in > *:nth-child(3) { animation-delay: 140ms; }
+.page-in > *:nth-child(4) { animation-delay: 210ms; }
+.page-in > *:nth-child(5) { animation-delay: 280ms; }
+
+/* Stagger dùng chung cho danh sách con: đáp án, số liệu, danh sách xem lại. */
+.stagger > * { animation: rise var(--dur-long) var(--ease-out) backwards; }
+.stagger > *:nth-child(1)  { animation-delay:  40ms; }
+.stagger > *:nth-child(2)  { animation-delay:  95ms; }
+.stagger > *:nth-child(3)  { animation-delay: 150ms; }
+.stagger > *:nth-child(4)  { animation-delay: 205ms; }
+.stagger > *:nth-child(5)  { animation-delay: 260ms; }
+.stagger > *:nth-child(6)  { animation-delay: 315ms; }
+.stagger > *:nth-child(7)  { animation-delay: 370ms; }
+.stagger > *:nth-child(8)  { animation-delay: 425ms; }
+.stagger > *:nth-child(9)  { animation-delay: 480ms; }
+.stagger > *:nth-child(n+10) { animation-delay: 535ms; }
+
+.anim-slam { animation: slam var(--dur-long) var(--ease-out) backwards; }
+.anim-fade { animation: fade var(--dur-long) var(--ease-out) backwards; }
+
+/* Nav: gạch chân tự kẻ từ trái sang. */
+.nav { position: relative; border-bottom-color: transparent; }
+.nav::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: calc(-1 * var(--rule-slab));
+  height: var(--rule-slab);
+  background: currentColor;
+  transform-origin: left center;
+  animation: sweep var(--dur-long) var(--ease-out) both;
+}
+
+/* Highlight poster: mảng màu quét ngang rồi mới nghiêng. */
+.hl { animation: wipe 520ms var(--ease-out) 180ms backwards; }
+
+/* Đèn "đang chạy" ở màn chiếu. */
+.live__dot { animation: blink 1.6s steps(1, end) infinite; }
+
+/* ── Nút & đáp án: nhấc lên có bóng khối (đúng ngôn ngữ slab) ── */
+.btn {
+  box-shadow: 0 0 0 0 var(--color-ink);
+  transition: background-color var(--dur-short) var(--ease-out),
+              color var(--dur-short) var(--ease-out),
+              border-color var(--dur-short) var(--ease-out),
+              box-shadow var(--dur-micro) var(--ease-out),
+              transform var(--dur-micro) var(--ease-out);
+}
+.btn:active { transform: translate(0, 2px); box-shadow: 0 0 0 0 var(--color-ink); }
+@media (hover: hover) and (pointer: fine) {
+  .btn:not([disabled]):not([aria-disabled="true"]):hover {
+    transform: translate(-2px, -3px);
+    box-shadow: 5px 5px 0 0 var(--color-ink);
+  }
+  .foot .btn:not([disabled]):hover,
+  .band--ink .btn:not([disabled]):hover { box-shadow: 5px 5px 0 0 var(--color-on-ink); }
+}
+
+.opt {
+  box-shadow: 0 0 0 0 var(--color-ink);
+  transition: background-color var(--dur-short) var(--ease-out),
+              border-color var(--dur-short) var(--ease-out),
+              color var(--dur-short) var(--ease-out),
+              box-shadow var(--dur-micro) var(--ease-out),
+              transform var(--dur-micro) var(--ease-out);
+}
+.opt:active { transform: translate(0, 2px); box-shadow: 0 0 0 0 var(--color-ink); }
+@media (hover: hover) and (pointer: fine) {
+  .opt:not(:disabled):hover {
+    transform: translate(-2px, -3px);
+    box-shadow: 5px 5px 0 0 var(--color-ink);
+  }
+}
+.opt__key { transition: background-color var(--dur-short) var(--ease-out); }
+.opt--picked { animation: pop var(--dur-short) var(--ease-out); }
+/* Chấm bài: đáp án đúng nảy nhẹ, đáp án đã chọn mà sai thì lắc. */
+.opt--ok { animation: pop 340ms var(--ease-out); }
+.opt--no { animation: nudge 380ms var(--ease-in-out); }
+
+/* ── Đồng hồ: 5 giây cuối thì nhịp mạnh lên ── */
+.qbar__timer { display: inline-block; transition: color var(--dur-short) var(--ease-out); }
+.qbar__timer--low { animation: tick 800ms var(--ease-in-out) infinite; }
+.timer-fill { transition: transform 200ms linear, background-color var(--dur-long) var(--ease-out); }
+.timer-fill--low { background: var(--color-accent-hi); }
+.qbar__timer--low { color: var(--color-accent-hi); }
+.qfig { animation: rise var(--dur-long) var(--ease-out) 60ms backwards; }
+
+/* ── Feedback slab: đóng sập xuống ── */
+.verdict { animation: slam var(--dur-long) var(--ease-out) backwards; }
+.explain { animation: rise var(--dur-long) var(--ease-out) 120ms backwards; }
+
+/* ── Điểm ở trang kết quả ── */
+.score { display: block; animation: slam 520ms var(--ease-out) backwards; }
+
+/* ── Leaderboard: đổi hạng do `motion` lo (layout animation).
+ *    CSS chỉ lo phần đổi màu khi lên/xuống hạng. */
+.row {
+  transition: background-color var(--dur-long) var(--ease-out),
+              border-color var(--dur-long) var(--ease-out),
+              outline-color var(--dur-long) var(--ease-out);
+}
+.row__pts { display: inline-block; }
+.row__pts--bump { animation: pop 420ms var(--ease-out); }
+
+/* Dialog vào/ra */
+dialog { animation: slam var(--dur-short) var(--ease-out) backwards; }
+dialog::backdrop { animation: fade var(--dur-short) var(--ease-out) backwards; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 150ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 150ms !important;
   }
   .timer-fill { transition-duration: 200ms !important; } /* functional: vẫn chạy */
-  .verdict { animation: none; }
+  /* Bỏ hẳn phần dịch chuyển; giữ fade để vẫn thấy có thay đổi trạng thái. */
+  .page-in > *, .stagger > *, .verdict, .explain, .score, .anim-slam, dialog {
+    animation-name: fade !important;
+  }
+  .hl { animation: none; }
+  .nav { border-bottom-color: currentColor; }
+  .nav::after { animation: none; display: none; }
+  .live__dot, .qbar__timer--low { animation: none !important; }
+  .opt--ok, .opt--no, .opt--picked, .row__pts--bump { animation: none !important; }
+  @media (hover: hover) and (pointer: fine) {
+    .btn:not([disabled]):not([aria-disabled="true"]):hover,
+    .opt:not(:disabled):hover { transform: none; box-shadow: none; }
+  }
 }
 
 /* Chỉ đọc được bằng trình đọc màn hình */

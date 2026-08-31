@@ -129,6 +129,10 @@ mỗi bước là một checkbox, t tick `[x]` ngay sau khi làm xong nên bro m
 - [x] 7. Mở/kết thúc/reset lượt (confirm + bắt tick đã xuất Excel), export Excel 3 sheet, lịch sử
 - [x] 8. Thiết kế Hallmark áp vào `app/globals.css`, mobile-first, eslint + build sạch
 - [x] 9a. Supabase đã chạy 2 file SQL, kết nối OK, **28 integration test pass trên DB thật**
+- [x] 9c. Lớp animation (2026-08-31): CSS motion system trong `globals.css` (vào trang, stagger đáp án,
+      nhấc nút có bóng khối, đồng hồ nhịp 5s cuối, slab feedback đóng sập), `CountUp` cho điểm ở
+      `/result`, và `motion` (framer-motion) lo leaderboard đổi hạng ở `/display` + `/result`.
+      Tôn trọng `prefers-reduced-motion`.
 - [ ] 9b. Deploy Vercel (cần account của BTC) + dựng QR cho thí sinh
 
 ## Verification — đã chạy 2026-08-31

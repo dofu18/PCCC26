@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { ActionState, ImportState } from "../actions";
 import {
   addQuestionAction,
@@ -284,6 +285,232 @@ export function DeleteSetButton({ setId }: { setId: string }) {
   );
 }
 
+/* ── Hướng dẫn cấu trúc file Excel ────────────────────────── */
+
+/** Đúng theo `QUESTION_HEADERS` và `parseQuestionWorkbook` trong `lib/excel.ts`. */
+const EXCEL_COLUMNS: { name: string; required: string; how: ReactNode }[] = [
+  {
+    name: "type",
+    required: "Bắt buộc",
+    how: (
+      <>
+        Dạng câu: <code>single</code> (1 đáp án) · <code>multi</code> (nhiều đáp án) ·{" "}
+        <code>boolean</code> (Đúng/Sai) · <code>text</code> (thí sinh gõ chữ).
+      </>
+    ),
+  },
+  { name: "question", required: "Bắt buộc", how: <>Nội dung câu hỏi.</> },
+  {
+    name: "correct",
+    required: "Bắt buộc",
+    how: <>Đáp án đúng — điền theo từng dạng câu, xem bảng bên dưới.</>,
+  },
+  {
+    name: "option_a → option_d",
+    required: "Với single / multi",
+    how: (
+      <>
+        Nội dung từng đáp án. Bỏ trống với <code>boolean</code> và <code>text</code>. Cần nhiều hơn 4
+        đáp án thì thêm cột <code>option_e</code>, <code>option_f</code>… tối đa tới{" "}
+        <code>option_j</code>.
+      </>
+    ),
+  },
+  {
+    name: "image",
+    required: "Không",
+    how: (
+      <>
+        URL ảnh <strong>công khai</strong> cho câu hỏi. Link Google Drive dạng chia sẻ sẽ được tự
+        chuyển sang dạng xem trực tiếp.
+      </>
+    ),
+  },
+  {
+    name: "time_limit",
+    required: "Không",
+    how: <>Số giây riêng cho câu này. Bỏ trống = dùng mặc định của lượt (đặt ở trang Cấu hình).</>,
+  },
+  {
+    name: "points",
+    required: "Không",
+    how: <>Điểm tối đa của câu. Bỏ trống = dùng mặc định của lượt.</>,
+  },
+  {
+    name: "explanation",
+    required: "Không",
+    how: <>Giải thích hiện ra ngay sau khi thí sinh trả lời. Nên có.</>,
+  },
+];
+
+const CORRECT_BY_TYPE: { type: string; value: string; note: string }[] = [
+  { type: "single", value: "B", note: "Một chữ cái đáp án. Dùng số cũng được: 2 = đáp án thứ hai." },
+  {
+    type: "multi",
+    value: "A,B,C",
+    note: "Nhiều chữ cái cách nhau bởi dấu phẩy. Thí sinh phải chọn đúng hết mới được điểm.",
+  },
+  { type: "boolean", value: "FALSE", note: "TRUE / FALSE, hoặc Đúng / Sai, hoặc 1 / 0." },
+  {
+    type: "text",
+    value: "bình ABC|ABC",
+    note: "Đáp án chữ. Nhiều cách viết đều được tính đúng thì cách nhau bởi dấu |",
+  },
+];
+
+/** Nút "?" mở bảng giải thích cấu trúc file Excel. */
+export function ExcelFormatHelp() {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  return (
+    <>
+      <button
+        className="help"
+        type="button"
+        aria-label="Cấu trúc file Excel cần như thế nào?"
+        title="Cấu trúc file Excel cần như thế nào?"
+        onClick={() => dialogRef.current?.showModal()}
+      >
+        ?
+      </button>
+
+      <dialog ref={dialogRef} className="dialog--wide" aria-labelledby="xlsx-help-title">
+        <div className="dlg dlg--scroll">
+          <h2 id="xlsx-help-title">Cấu trúc file Excel</h2>
+          <p>
+            Mỗi <strong>một dòng là một câu hỏi</strong>. Dòng đầu tiên phải là dòng tên cột — thứ tự
+            cột không quan trọng vì hệ thống đọc theo tên. Chỉ sheet đầu tiên được đọc, dòng trống bị
+            bỏ qua.
+          </p>
+
+          <h3>Các cột</h3>
+          <div className="tablewrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Tên cột</th>
+                  <th>Bắt buộc</th>
+                  <th>Cách điền</th>
+                </tr>
+              </thead>
+              <tbody>
+                {EXCEL_COLUMNS.map((column) => (
+                  <tr key={column.name}>
+                    <td>
+                      <code>{column.name}</code>
+                    </td>
+                    <td className={column.required === "Bắt buộc" ? "req" : undefined}>
+                      {column.required}
+                    </td>
+                    <td>{column.how}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3>
+            Cột <code>correct</code> điền theo dạng câu
+          </h3>
+          <div className="tablewrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>type</th>
+                  <th>Ví dụ correct</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CORRECT_BY_TYPE.map((row) => (
+                  <tr key={row.type}>
+                    <td>
+                      <code>{row.type}</code>
+                    </td>
+                    <td>
+                      <code>{row.value}</code>
+                    </td>
+                    <td>{row.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Ví dụ một dòng hoàn chỉnh</h3>
+          <div className="tablewrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>type</th>
+                  <th>question</th>
+                  <th>option_a</th>
+                  <th>option_b</th>
+                  <th>option_c</th>
+                  <th>option_d</th>
+                  <th>correct</th>
+                  <th>time_limit</th>
+                  <th>points</th>
+                  <th>explanation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>single</td>
+                  <td>Số điện thoại gọi Cảnh sát phòng cháy chữa cháy là số nào?</td>
+                  <td>113</td>
+                  <td>114</td>
+                  <td>115</td>
+                  <td>116</td>
+                  <td>B</td>
+                  <td>20</td>
+                  <td>1000</td>
+                  <td>114 là số của Cảnh sát PCCC và cứu nạn cứu hộ.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3>Lưu ý khi soạn đề</h3>
+          <ul>
+            <li>
+              Đáp án <code>text</code> được so khớp{" "}
+              <strong>bỏ qua hoa/thường, dấu câu và dấu tiếng Việt</strong> — “Bình ABC” và “binh
+              abc” đều tính đúng.
+            </li>
+            <li>
+              Thứ tự câu và thứ tự đáp án được <strong>trộn riêng cho từng thí sinh</strong>, nên
+              đừng soạn câu kiểu “cả A và B đều đúng”.
+            </li>
+            <li>Trả lời càng nhanh thì càng nhiều điểm. Trả lời sai không bị trừ điểm.</li>
+            <li>
+              Nếu file có dòng sai định dạng, hệ thống <strong>không lưu gì cả</strong> và báo rõ sai
+              ở dòng nào — sửa rồi nhập lại là được.
+            </li>
+            <li>
+              File tối đa 8 MB, định dạng <code>.xlsx</code> (không nhận <code>.xls</code> hay{" "}
+              <code>.csv</code>).
+            </li>
+          </ul>
+
+          <div className="dlg__foot btn-row">
+            <a className="btn" href="/admin/template">
+              Tải file mẫu
+            </a>
+            <button
+              className="btn btn--ghost"
+              type="button"
+              onClick={() => dialogRef.current?.close()}
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </dialog>
+    </>
+  );
+}
+
 /* ── Nhập Excel ───────────────────────────────────────────── */
 
 export function ImportForm({ setId }: { setId: string }) {
@@ -296,19 +523,27 @@ export function ImportForm({ setId }: { setId: string }) {
       <Feedback state={state} />
       <input type="hidden" name="setId" value={setId} />
 
-      <label className="field">
-        <span className="field__label">File Excel (.xlsx)</span>
+      {/* Không bọc cả khối trong <label>: nút "?" nằm trong label sẽ bị click lây sang input file. */}
+      <div className="field">
+        <div className="field__labelrow">
+          <span className="field__label" id="xlsx-file-label">
+            File Excel (.xlsx)
+          </span>
+          <ExcelFormatHelp />
+        </div>
         <input
           className="field__input"
           type="file"
           name="file"
+          aria-labelledby="xlsx-file-label"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           required
         />
         <span className="field__hint">
-          Chưa có file? <a href="/admin/template">Tải file mẫu</a> rồi điền theo cột có sẵn.
+          Chưa có file? <a href="/admin/template">Tải file mẫu</a> rồi điền theo cột có sẵn — bấm{" "}
+          <strong>?</strong> ở trên để xem cần những cột gì.
         </span>
-      </label>
+      </div>
 
       <label className="field">
         <span className="field__label">Cách nhập</span>

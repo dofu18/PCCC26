@@ -28,7 +28,10 @@ export default async function DisplayPage() {
             }
           />
 
-          <h1 className="display" style={{ margin: "var(--space-xl) 0 var(--space-lg)" }}>
+          <h1
+            className="display anim-slam"
+            style={{ margin: "var(--space-xl) 0 var(--space-lg)" }}
+          >
             Xếp hạng
           </h1>
 

@@ -67,6 +67,8 @@ export function QuizRunner({ question, remainingMs, timeLimitMs }: Props) {
 
   const seconds = Math.ceil(remaining / 1000);
   const fill = timeLimitMs > 0 ? Math.max(0, Math.min(1, remaining / timeLimitMs)) : 0;
+  // 5 giây cuối: số nhịp mạnh lên và thanh thời gian sáng hơn — nhìn là biết phải nhanh.
+  const low = !feedback && remaining > 0 && remaining <= 5000;
   const locked = Boolean(feedback) || pending;
 
   function next() {
@@ -89,13 +91,16 @@ export function QuizRunner({ question, remainingMs, timeLimitMs }: Props) {
             <span className="qbar__count num">
               Câu {question.index} / {question.total}
             </span>
-            <span className="qbar__timer num" aria-hidden="true">
+            <span className={`qbar__timer num${low ? " qbar__timer--low" : ""}`} aria-hidden="true">
               {feedback ? "—" : seconds}
             </span>
           </div>
         </div>
         <div className="timer-track">
-          <div className="timer-fill" style={{ ["--fill" as string]: String(fill) }} />
+          <div
+            className={`timer-fill${low ? " timer-fill--low" : ""}`}
+            style={{ ["--fill" as string]: String(fill) }}
+          />
         </div>
         <p className="sr-only" role="status">
           {feedback ? "Đã trả lời." : `Còn khoảng ${Math.max(0, seconds)} giây.`}
@@ -104,7 +109,7 @@ export function QuizRunner({ question, remainingMs, timeLimitMs }: Props) {
 
       <section className="band band--paper">
         <div className="wrap">
-          <h2 className="qtext">{question.content}</h2>
+          <h2 className="qtext anim-slam">{question.content}</h2>
 
           {question.image_url ? (
             <figure className="qfig">
@@ -139,7 +144,7 @@ export function QuizRunner({ question, remainingMs, timeLimitMs }: Props) {
           ) : null}
 
           {question.type === "single" || question.type === "multi" ? (
-            <div className="opts">
+            <div className="opts stagger">
               {(question.options ?? []).map((option, index) => (
                 <button
                   key={index}
@@ -166,7 +171,7 @@ export function QuizRunner({ question, remainingMs, timeLimitMs }: Props) {
           ) : null}
 
           {question.type === "boolean" ? (
-            <div className="opts">
+            <div className="opts stagger">
               {[
                 { label: "Đúng", value: true },
                 { label: "Sai", value: false },

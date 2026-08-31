@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ErrorNotice, Footer, Nav, SetupNotice } from "../_components/chrome";
+import { CountUp } from "../_components/count-up";
 import { LiveLeaderboard } from "../_components/leaderboard";
 import { readParticipantCookie } from "@/lib/auth";
 import { formatDuration, formatScore } from "@/lib/format";
@@ -38,7 +39,7 @@ export default async function ResultPage() {
 
   return (
     <>
-      <main>
+      <main className="page-in">
         <section className="band band--paper2 band--tight">
           <div className="wrap">
             <Nav meta={participant.finished_at ? "Đã nộp bài" : "Đang làm"} />
@@ -50,14 +51,16 @@ export default async function ResultPage() {
             <p className="whoami">
               <span className="num">{participant.code}</span> - {participant.full_name}
             </p>
-            <p className="score num">{formatScore(summary?.total_score ?? 0)}</p>
+            <p className="score num">
+              <CountUp value={summary?.total_score ?? 0} />
+            </p>
             <p className="lede" style={{ marginTop: "var(--space-sm)" }}>
               {mine
                 ? `điểm — đang xếp hạng ${mine.rank} trong lượt này.`
                 : "điểm — chờ bảng xếp hạng cập nhật."}
             </p>
 
-            <dl className="facts">
+            <dl className="facts stagger">
               <div>
                 <dt className="fact__k">Câu đúng</dt>
                 <dd className="fact__v num">
@@ -121,7 +124,7 @@ export default async function ResultPage() {
               <h2 className="display-s" style={{ marginBottom: "var(--space-lg)" }}>
                 Xem lại bài làm
               </h2>
-              <div className="stack">
+              <div className="stack stagger">
                 {review.map((row) => (
                   <div className="panel" key={row.order_index}>
                     <p className="meta">

@@ -1,5 +1,7 @@
 "use client";
 
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef } from "react";
 import useSWR from "swr";
 import { formatScore } from "@/lib/format";
 
@@ -55,6 +57,31 @@ export function LiveLeaderboard({
   });
 
   const rows = data?.rows ?? [];
+  const reduce = useReducedMotion();
+
+  // Ai vừa được cộng điểm thì cho số nảy lên. So sánh qua một "chữ ký" id:điểm
+  // để effect chỉ chạy khi bảng thật sự đổi. Class được gắn trực tiếp vào DOM
+  // (không qua state) nên không kéo thêm một vòng render mỗi 2 giây.
+  const signature = rows.map((row) => `${row.participant_id}:${row.total_score}`).join("|");
+  const prevScores = useRef(new Map<string, number>());
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const board = boardRef.current;
+    for (const part of signature ? signature.split("|") : []) {
+      const [id, raw] = part.split(":");
+      const score = Number(raw);
+      const before = prevScores.current.get(id);
+      const rose = before !== undefined && score > before;
+      prevScores.current.set(id, score);
+      if (!rose || !board) continue;
+      const node = board.querySelector<HTMLElement>(`[data-pts="${id}"]`);
+      if (!node) continue;
+      node.classList.remove("row__pts--bump");
+      void node.offsetWidth; // buộc reflow để animation chạy lại từ đầu
+      node.classList.add("row__pts--bump");
+    }
+  }, [signature]);
 
   if (error && rows.length === 0) {
     return <p className="notice">Chưa tải được bảng xếp hạng. Đang thử lại…</p>;
@@ -65,23 +92,39 @@ export function LiveLeaderboard({
   }
 
   return (
-    <div className="board">
-      {rows.map((row) => {
-        const classes = ["row"];
-        if (row.rank === 1) classes.push("row--lead");
-        if (row.participant_id === highlightParticipantId) classes.push("row--self");
-        return (
-          <div className={classes.join(" ")} key={row.participant_id}>
-            <span className="row__rank num">{row.rank}</span>
-            <span className="row__who">
-              <span className="row__code num">{row.code}</span>
-              <br />
-              <span className="row__name">{row.full_name}</span>
-            </span>
-            <span className="row__pts num">{formatScore(row.total_score)}</span>
-          </div>
-        );
-      })}
+    <div className="board" ref={boardRef}>
+      <AnimatePresence initial={false}>
+        {rows.map((row, index) => {
+          const classes = ["row"];
+          if (row.rank === 1) classes.push("row--lead");
+          if (row.participant_id === highlightParticipantId) classes.push("row--self");
+          return (
+            <motion.div
+              className={classes.join(" ")}
+              key={row.participant_id}
+              layout={reduce ? false : "position"}
+              initial={reduce ? false : { opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduce ? undefined : { opacity: 0, y: -8 }}
+              transition={{
+                layout: { type: "spring", stiffness: 520, damping: 38, mass: 0.6 },
+                opacity: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
+                y: { duration: 0.32, ease: [0.16, 1, 0.3, 1], delay: index * 0.035 },
+              }}
+            >
+              <span className="row__rank num">{row.rank}</span>
+              <span className="row__who">
+                <span className="row__code num">{row.code}</span>
+                <br />
+                <span className="row__name">{row.full_name}</span>
+              </span>
+              <span className="row__pts num" data-pts={row.participant_id}>
+                {formatScore(row.total_score)}
+              </span>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 }

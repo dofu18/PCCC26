@@ -17,7 +17,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
 
   if (!(await isAdmin())) {
     return (
-      <main>
+      <main className="page-in">
         <section className="band band--ink band--tight">
           <div className="wrap">
             <Nav meta="Ban tổ chức" />
@@ -36,7 +36,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   }
 
   return (
-    <main>
+    <main className="page-in">
       <section className="band band--paper2 band--tight">
         <div className="wrap wrap--wide">
           <Nav meta="Ban tổ chức" />
