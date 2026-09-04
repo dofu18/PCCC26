@@ -148,7 +148,12 @@ mỗi bước là một checkbox, t tick `[x]` ngay sau khi làm xong nên bro m
       **(b)** Trang `/result` của thí sinh hiện thêm "Bạn trả lời", và "Đáp án đúng" ở câu sai.
       Phần diễn giải đáp án gom về `lib/answer-text.ts`, dùng chung cho trang kết quả, trang
       admin, bảng câu hỏi và file Excel (trước đó mỗi chỗ có một bản riêng).
-- [ ] 9b. Deploy Vercel (cần account của BTC) + dựng QR cho thí sinh
+- [x] 9b. Deploy Vercel (2026-09-04) — **https://pccc26.vercel.app**
+      Project `pccc26` trên account `htphu1811-3793`, 4 env var đã set ở môi trường Production.
+      Deploy bằng Vercel CLI, **chưa nối GitHub** nên push lên `origin/main` KHÔNG tự deploy —
+      muốn cập nhật phải chạy `vercel --prod`, hoặc chạy `vercel git connect` một lần để bật
+      auto-deploy (lúc link bị chặn vì account chưa thêm Login Connection tới GitHub).
+- [ ] 9f. Dựng QR trỏ tới https://pccc26.vercel.app cho thí sinh quét
 
 ## Verification — đã chạy 2026-08-31
 | Hạng mục | Kết quả |

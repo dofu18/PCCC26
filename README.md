@@ -3,6 +3,12 @@
 Thí sinh vào bằng mã số sinh viên, trả lời bộ câu hỏi do ban tổ chức soạn, bảng xếp hạng cập nhật
 liên tục cho màn hình sân khấu. Hết lượt thì xuất Excel và reset để chạy nhóm kế tiếp.
 
+## Bản đang chạy
+
+**https://pccc26.vercel.app** — production trên Vercel (project `pccc26`).
+
+Cập nhật sau khi sửa code: `vercel --prod` (project chưa nối GitHub nên `git push` không tự deploy).
+
 ## Chạy lần đầu
 
 ### 1. Tạo Supabase project
