@@ -5,10 +5,10 @@ export function formatDuration(ms: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds - minutes * 60;
   if (minutes === 0) return `${seconds.toFixed(1)} giây`;
-  return `${minutes} phút ${Math.round(seconds)}`;
+  return `${minutes} phút ${Math.round(seconds)} giây`;
 }
 
-export function formatScore(value: number): string {
+export function formatNumber(value: number): string {
   return new Intl.NumberFormat("vi-VN").format(value);
 }
 

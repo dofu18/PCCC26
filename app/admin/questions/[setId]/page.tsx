@@ -63,8 +63,6 @@ export default async function QuestionSetPage({ params }: PageProps<"/admin/ques
                     <th>Dạng</th>
                     <th>Câu hỏi</th>
                     <th>Đáp án đúng</th>
-                    <th>Giây</th>
-                    <th>Điểm</th>
                     <th>Ảnh</th>
                     <th />
                   </tr>
@@ -78,8 +76,6 @@ export default async function QuestionSetPage({ params }: PageProps<"/admin/ques
                       </td>
                       <td>{question.content}</td>
                       <td>{describeCorrect(question)}</td>
-                      <td className="num">{question.time_limit_s ?? "—"}</td>
-                      <td className="num">{question.points ?? "—"}</td>
                       <td>{question.image_url ? "có" : "—"}</td>
                       <td>
                         <div className="btn-row">

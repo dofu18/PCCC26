@@ -38,8 +38,7 @@ export default async function QuizPage() {
       <QuizRunner
         key={step.question.id}
         question={step.question}
-        remainingMs={step.remainingMs}
-        timeLimitMs={step.timeLimitMs}
+        servedAt={step.servedAt}
       />
     </main>
   );

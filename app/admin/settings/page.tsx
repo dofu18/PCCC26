@@ -10,7 +10,7 @@ export default async function SettingsPage() {
     <section className="band band--paper">
       <div className="wrap">
         <h1 className="display-s" style={{ marginBottom: "var(--space-lg)" }}>
-          Cấu hình chấm điểm
+          Cấu hình lượt thi
         </h1>
 
         <p className="notice" style={{ marginBottom: "var(--space-lg)" }}>
@@ -21,13 +21,13 @@ export default async function SettingsPage() {
         <SettingsForm settings={settings} />
 
         <div className="panel" style={{ marginTop: "var(--space-xl)" }}>
-          <h3>Cách tính điểm hiện tại</h3>
+          <h3>Cách xếp hạng hiện tại</h3>
           <p style={{ color: "var(--color-ink-2)" }}>
-            Sai hoặc hết giờ được 0 điểm, không bị trừ. Trả lời đúng được{" "}
-            <strong className="num">{settings.default_points}</strong> điểm nếu bấm gần như tức thì,
-            giảm dần còn khoảng một nửa nếu trả lời sát hết giờ
-            {settings.speed_bonus ? "" : " (đang tắt — mọi câu đúng bằng điểm nhau)"}. Đồng điểm thì
-            ai tổng thời gian ít hơn xếp trên.
+            Không giới hạn thời gian mỗi câu. Xếp hạng theo <strong>số câu đúng</strong>; bằng số
+            câu đúng thì ai <strong>tổng thời gian làm bài</strong> ít hơn xếp trên. Thời gian được
+            cộng theo từng câu, tính từ lúc câu hiện ra tới lúc bấm trả lời — thời gian đọc giải
+            thích giữa các câu không bị tính, nên đọc kỹ không làm mất thành tích. Thí sinh bí một
+            câu có thể bấm “Bỏ qua câu này” — tính là sai và chuyển sang câu sau.
           </p>
         </div>
       </div>

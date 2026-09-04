@@ -10,8 +10,6 @@ export const QUESTION_HEADERS = [
   "option_c",
   "option_d",
   "correct",
-  "time_limit",
-  "points",
   "explanation",
 ] as const;
 
@@ -22,8 +20,6 @@ export type ParsedQuestion = {
   image_url: string | null;
   options: string[] | null;
   correct: (number | boolean | string)[];
-  time_limit_s: number | null;
-  points: number | null;
   explanation: string | null;
 };
 
@@ -63,16 +59,6 @@ function cellText(row: ExcelJS.Row, index: number): string {
     if ("hyperlink" in value && typeof value.hyperlink === "string") return value.hyperlink.trim();
   }
   return String(value).trim();
-}
-
-function parseIntOrNull(value: string, label: string, errors: string[]): number | null {
-  if (!value) return null;
-  const n = Number(value.replace(",", "."));
-  if (!Number.isFinite(n) || n <= 0) {
-    errors.push(`${label} phải là số dương, đang là “${value}”`);
-    return null;
-  }
-  return Math.round(n);
 }
 
 function parseBooleanAnswer(value: string): boolean | null {
@@ -183,15 +169,6 @@ export async function parseQuestionWorkbook(data: ArrayBuffer): Promise<ParseRes
       correct = variants;
     }
 
-    const numberErrors: string[] = [];
-    const timeLimit = parseIntOrNull(
-      cellText(row, columns.get("time_limit") ?? -1),
-      "time_limit",
-      numberErrors,
-    );
-    const points = parseIntOrNull(cellText(row, columns.get("points") ?? -1), "points", numberErrors);
-    rowErrors.push(...numberErrors);
-
     if (rowErrors.length) {
       errors.push({ row: r, message: rowErrors.join(" · ") });
       continue;
@@ -208,8 +185,6 @@ export async function parseQuestionWorkbook(data: ArrayBuffer): Promise<ParseRes
       image_url: imageRaw ? normalizeImageUrl(imageRaw) : null,
       options: type === "single" || type === "multi" ? options : null,
       correct,
-      time_limit_s: timeLimit,
-      points,
       explanation: explanation || null,
     });
   }
@@ -236,8 +211,6 @@ export async function buildQuestionTemplate(): Promise<ArrayBuffer> {
     "115",
     "116",
     "B",
-    20,
-    1000,
     "114 là số của Cảnh sát phòng cháy chữa cháy và cứu nạn cứu hộ.",
   ]);
   ws.addRow([
@@ -249,8 +222,6 @@ export async function buildQuestionTemplate(): Promise<ArrayBuffer> {
     "Ngắt nguồn điện khu vực đang cháy",
     "Mở toàn bộ cửa sổ cho khói bay ra",
     "A,B,C",
-    25,
-    1000,
     "Mở cửa sổ đưa thêm không khí vào làm lửa bùng lên mạnh hơn.",
   ]);
   ws.addRow([
@@ -262,8 +233,6 @@ export async function buildQuestionTemplate(): Promise<ArrayBuffer> {
     "",
     "",
     "FALSE",
-    15,
-    1000,
     "Thang máy có thể mất điện và kẹt lại; hãy dùng thang bộ.",
   ]);
   ws.addRow([
@@ -275,8 +244,6 @@ export async function buildQuestionTemplate(): Promise<ArrayBuffer> {
     "",
     "",
     "ABC",
-    20,
-    1000,
     "Bột ABC chữa được cả ba nhóm chất.",
   ]);
 
@@ -290,8 +257,6 @@ export async function buildQuestionTemplate(): Promise<ArrayBuffer> {
     ["image", "URL ảnh công khai. Để trống nếu câu không có ảnh. Link Google Drive dạng chia sẻ sẽ được tự chuyển."],
     ["option_a…d", "Các đáp án cho single/multi. Bỏ trống với boolean và text. Thêm cột option_e, option_f… nếu cần."],
     ["correct", "single: B · multi: A,C · boolean: TRUE hoặc FALSE · text: đáp án (nhiều biến thể cách nhau bởi dấu |)"],
-    ["time_limit", "Số giây cho câu này. Bỏ trống = dùng mặc định của lượt."],
-    ["points", "Điểm tối đa của câu. Bỏ trống = dùng mặc định của lượt."],
     ["explanation", "Giải thích hiện ra sau khi thí sinh trả lời. Nên có."],
   ].forEach((r) => guide.addRow(r));
   guide.addRow([]);
@@ -306,8 +271,6 @@ export async function buildQuestionTemplate(): Promise<ArrayBuffer> {
     { width: 24 },
     { width: 24 },
     { width: 12 },
-    { width: 12 },
-    { width: 10 },
     { width: 60 },
   ];
 
@@ -322,7 +285,6 @@ export type AnswerDetail = {
   given_text: string;
   is_correct: boolean;
   time_ms: number;
-  score: number;
 };
 
 function formatDuration(ms: number): string {
@@ -349,7 +311,6 @@ export async function buildLeaderboardWorkbook(
     { header: "Mã số", key: "code", width: 14 },
     { header: "Họ tên", key: "name", width: 26 },
     { header: "Tên hiển thị", key: "display", width: 40 },
-    { header: "Điểm", key: "score", width: 10 },
     { header: "Số câu đúng", key: "correct", width: 14 },
     { header: "Số câu đã trả lời", key: "answered", width: 18 },
     { header: "Tổng thời gian", key: "time", width: 18 },
@@ -364,7 +325,6 @@ export async function buildLeaderboardWorkbook(
       code: r.code,
       name: r.full_name,
       display: r.display_name,
-      score: r.total_score,
       correct: r.correct_count,
       answered: r.answered_count,
       time: formatDuration(r.total_time_ms),
@@ -379,7 +339,7 @@ export async function buildLeaderboardWorkbook(
   info.addRow(["Số thí sinh", rows.length]);
   info.addRow([
     "Ghi chú",
-    "Mỗi mã số chỉ tính lượt làm có điểm cao nhất. Đồng điểm thì ai tổng thời gian ít hơn xếp trên.",
+    "Xếp theo số câu đúng. Bằng số câu đúng thì ai tổng thời gian ít hơn xếp trên. Mỗi mã số chỉ tính lượt làm tốt nhất.",
   ]);
 
   const ds = wb.addWorksheet("Chi tiết trả lời");
@@ -391,7 +351,6 @@ export async function buildLeaderboardWorkbook(
     { header: "Đã chọn", key: "given", width: 40 },
     { header: "Kết quả", key: "result", width: 12 },
     { header: "Thời gian", key: "time", width: 14 },
-    { header: "Điểm", key: "score", width: 9 },
   ];
   ds.getRow(1).font = { bold: true };
   ds.views = [{ state: "frozen", ySplit: 1 }];
@@ -404,7 +363,6 @@ export async function buildLeaderboardWorkbook(
       given: d.given_text,
       result: d.is_correct ? "Đúng" : "Sai",
       time: formatDuration(d.time_ms),
-      score: d.score,
     });
   });
 

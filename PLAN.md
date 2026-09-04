@@ -153,7 +153,27 @@ mỗi bước là một checkbox, t tick `[x]` ngay sau khi làm xong nên bro m
       Deploy bằng Vercel CLI, **chưa nối GitHub** nên push lên `origin/main` KHÔNG tự deploy —
       muốn cập nhật phải chạy `vercel --prod`, hoặc chạy `vercel git connect` một lần để bật
       auto-deploy (lúc link bị chặn vì account chưa thêm Login Connection tới GitHub).
-- [ ] 9f. Dựng QR trỏ tới https://pccc26.vercel.app cho thí sinh quét
+- [x] 9f. Dựng QR (`public/qr-pccc26.svg` + `.png`, sinh bằng `scripts/make-qr.mjs`),
+      gắn thêm ở góc `/display` để người đến muộn quét thẳng từ màn chiếu
+- [x] 10. Đổi luật chơi theo yêu cầu BTC (2026-09-05):
+      **(a)** Bỏ giới hạn thời gian mỗi câu; đồng hồ đổi thành đếm LÊN, không tự nộp.
+      **(b)** Xếp hạng theo **số câu đúng**, đồng hạng thì **tổng thời gian** ít hơn xếp trên.
+      Tổng thời gian = cộng thời gian suy nghĩ từng câu (không tính lúc đọc giải thích giữa
+      các câu, vì có màn feedback + nút “Câu tiếp theo” chen vào).
+      **(c)** Bỏ hoàn toàn khái niệm điểm khỏi UI, Excel và DB (`0003_no_score.sql`).
+      **(d)** Thêm nút **"Bỏ qua câu này"** — không còn hết giờ tự chuyển nên phải có lối thoát.
+      **(e)** BXH hiện họ tên trên, mã số dưới; cột phải là số câu đúng + tổng thời gian.
+      **(f)** Thêm nút **"Thí sinh tiếp theo"** ở `/result` — xoá cookie, về trang nhập mã,
+      dành cho trường hợp cả sự kiện dùng chung một máy.
+      **(g)** Bỏ cột "Điểm" khỏi cả 2 sheet Excel.
+- [x] 11. Sửa 4 bug admin chặn BTC soạn đề (đều là lỗi có sẵn):
+      **#2 (bệnh BTC gặp)** `requireAdmin()` gọi ngoài `try` ở 11 action → cookie 12h hết hạn thì
+      bấm nút im lặng, không báo gì. Gom vào helper `guard()`.
+      **#1** index đáp án lệch: checkbox mang vị trí gốc A–J nhưng server `.filter(Boolean)` nén
+      mảng → bỏ trống ô giữa là báo "Chọn đáp án đúng" dù đã tick, hoặc lưu nhầm đáp án.
+      **#3** `createSetAction` nuốt `NEXT_REDIRECT` → tạo bộ đề hiện lỗi đỏ, không chuyển trang.
+      **#4** form thêm câu không reset sau khi lưu → tưởng nút không ăn.
+      Kèm: ô đáp án nâng từ A–F lên A–J cho khớp Excel, hiện 4 ô + nút thêm.
 
 ## Verification — đã chạy 2026-08-31
 | Hạng mục | Kết quả |

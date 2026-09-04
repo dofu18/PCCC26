@@ -7,7 +7,8 @@ liên tục cho màn hình sân khấu. Hết lượt thì xuất Excel và rese
 
 **https://pccc26.vercel.app** — production trên Vercel (project `pccc26`).
 
-Cập nhật sau khi sửa code: `vercel --prod` (project chưa nối GitHub nên `git push` không tự deploy).
+Cập nhật sau khi sửa code: Vercel dashboard → project `pccc26` → Deployments → `⋯` → **Redeploy**.
+Nối GitHub ở Settings → Git thì `git push` sẽ tự deploy.
 
 ## Chạy lần đầu
 
@@ -16,8 +17,9 @@ Cập nhật sau khi sửa code: `vercel --prod` (project chưa nối GitHub nê
 1. Vào [supabase.com](https://supabase.com) → **New project** (gói miễn phí là đủ cho 10–15 người/lượt).
 2. Mở **SQL Editor** → dán toàn bộ `supabase/migrations/0001_init.sql` → **Run**.
 3. Dán tiếp `supabase/migrations/0002_questions_per_attempt.sql` → **Run**.
-4. Muốn có sẵn 8 câu mẫu để thử: dán tiếp `supabase/seed.sql` → **Run**.
-5. Lấy hai giá trị:
+4. Dán tiếp `supabase/migrations/0003_no_score.sql` → **Run**.
+5. Muốn có sẵn 8 câu mẫu để thử: dán tiếp `supabase/seed.sql` → **Run**.
+6. Lấy hai giá trị:
    - **Project URL**: Settings → Data API → *Project URL*
    - **service_role key**: Settings → API Keys → *service_role* (khoá bí mật, có toàn quyền)
 
@@ -45,38 +47,55 @@ Mở http://localhost:3000.
 | --- | --- | --- |
 | `/` | thí sinh | Nhập mã số + họ tên để vào lượt đang mở |
 | `/quiz` | thí sinh | Trả lời từng câu, có đồng hồ, hiện đúng/sai ngay |
-| `/result` | thí sinh | Điểm, thứ hạng, xem lại bài làm |
+| `/result` | thí sinh | Số câu đúng, thời gian, thứ hạng, xem lại bài làm, nút nhường máy |
 | `/display` | máy chiếu | Bảng xếp hạng chữ lớn, tự cập nhật |
 | `/admin` | ban tổ chức | Mở/kết thúc/reset lượt, bảng xếp hạng, xuất Excel |
-| `/admin/session/[id]` | ban tổ chức | Bài làm chi tiết: từng thí sinh, từng câu, đáp án đã chọn, điểm |
+| `/admin/session/[id]` | ban tổ chức | Bài làm chi tiết: từng thí sinh, từng câu, đáp án đã chọn |
 | `/admin/questions` | ban tổ chức | Bộ đề: nhập Excel hoặc thêm tay |
 | `/admin/history` | ban tổ chức | Các lượt đã kết thúc, xuất lại Excel |
-| `/admin/settings` | ban tổ chức | Thời gian, điểm, luật chấm, số câu mỗi lượt |
+| `/admin/settings` | ban tổ chức | Luật chấm, số câu mỗi lượt |
 
 ## Cách chạy một buổi sự kiện
 
 1. `/admin/questions` → tạo bộ đề → tải file mẫu → điền câu hỏi → nhập lại.
-2. `/admin/settings` → chỉnh thời gian mỗi câu, điểm, và **số câu mỗi lượt** nếu cần.
+2. `/admin/settings` → chỉnh **số câu mỗi lượt** nếu cần.
    Để trống số câu thì thí sinh làm hết bộ đề; điền 10 thì mỗi người được rút ngẫu nhiên 10 câu
    từ ngân hàng (mỗi người một tập câu khác nhau, reload không đổi đề).
 3. `/admin` → **Mở lượt thi**.
 4. Mở `/display` trên laptop nối máy chiếu.
-5. Thí sinh vào `/` (dán link hoặc dựng QR trỏ tới địa chỉ web).
+5. Thí sinh quét QR ở góc màn chiếu, hoặc in `public/qr-pccc26.png` dán ở bàn tiếp đón.
 6. Muốn soi kỹ ai trả lời gì → `/admin` → **Xem bài làm chi tiết** (lượt cũ xem ở `/admin/history`).
 7. Xong lượt → `/admin` → **Xuất Excel** → **Reset session** (phải tick đã xuất Excel mới bấm được).
 
-## Cách tính điểm
+## QR cho thí sinh
+
+Sinh sẵn ở `public/qr-pccc26.svg` (in, phóng bao nhiêu cũng nét) và `public/qr-pccc26.png`
+(1200px). QR cũng hiện ở góc phải dưới `/display` để người đến muộn quét thẳng từ màn chiếu.
+
+Đổi tên miền thì sinh lại:
+
+```bash
+node scripts/make-qr.mjs https://ten-mien-moi
+```
+
+`qrcode` chỉ là devDependency — web chạy thật không tải thư viện nào, chỉ dùng file ảnh tĩnh.
+
+## Cách xếp hạng
 
 ```
-sai hoặc hết giờ → 0 điểm (không bị trừ)
-đúng             → round(points × (1 − (thời_gian_dùng / giới_hạn) / 2))
+1. số câu đúng      — nhiều hơn xếp trên
+2. tổng thời gian   — bằng số câu đúng thì ít hơn xếp trên
 ```
 
-Bấm gần như tức thì được trọn `points` (mặc định 1000), trả lời sát hết giờ còn khoảng một nửa.
-Đồng điểm thì ai tổng thời gian ít hơn xếp trên. Mỗi mã số chỉ tính lượt làm có điểm cao nhất.
+**Không giới hạn thời gian mỗi câu.** Đồng hồ trên màn làm bài đếm lên để thí sinh biết thời gian
+đang được tính. Tổng thời gian là **tổng thời gian suy nghĩ của từng câu** — tính từ lúc câu
+hiện ra tới lúc bấm trả lời. Thời gian đọc màn đúng/sai và giải thích giữa các câu **không** bị
+tính, nên thí sinh đọc kỹ giải thích để học không bị thiệt.
 
-Đổi tham số ở `/admin/settings`. Mỗi lượt thi lưu lại cấu hình tại thời điểm mở lượt, nên sửa
-cấu hình giữa sự kiện không làm lệch điểm của lượt đang chạy.
+Thí sinh bí một câu có thể bấm **Bỏ qua câu này** — tính là sai và chuyển sang câu sau. Không có
+nút này thì người bí sẽ ngồi lỳ giữa sự kiện trong khi đồng hồ vẫn chạy.
+
+Mỗi mã số chỉ tính lượt làm tốt nhất, nên ai vào lại lần hai không làm loãng bảng xếp hạng.
 
 ## File Excel câu hỏi
 
@@ -98,14 +117,15 @@ Tải file mẫu (kèm sheet hướng dẫn) tại `/admin/template`.
 - Thời gian trả lời do server tính từ lúc phát câu, không tin đồng hồ máy thí sinh. Reload trang
   không làm đồng hồ chạy lại.
 - Cookie định danh thí sinh và phiên quản trị đều được ký HMAC bằng `APP_SECRET`.
-- Mỗi câu chỉ nhận đáp án một lần (unique index trong DB), gửi lại không ghi đè điểm.
+- Mỗi câu chỉ nhận đáp án một lần (unique index trong DB), gửi lại không ghi đè.
 
 ## Lệnh
 
 ```bash
 npm run dev         # chạy local
 npm run build       # build production (đã bao gồm typecheck)
-npm test            # 55 unit test: chấm điểm, trộn đề, đọc/ghi Excel
+npm test            # 54 unit test: chấm đúng/sai, trộn đề, đọc/ghi Excel
+npm run test:e2e    # integration test trên Supabase thật (cần .env.local)
 npm run typecheck   # chỉ typecheck
 npm run lint        # eslint
 ```

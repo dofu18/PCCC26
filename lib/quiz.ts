@@ -1,12 +1,6 @@
 import "server-only";
 import { describeCorrect, describeGiven } from "./answer-text";
-import {
-  clampTimeUsed,
-  grade,
-  pointsFor,
-  scoreFor,
-  timeLimitMsFor,
-} from "./scoring";
+import { elapsedMs, grade } from "./scoring";
 import { buildQuestionOrder, displayOptions, toOriginalIndex } from "./shuffle";
 import { db } from "./supabase";
 import type {
@@ -20,9 +14,6 @@ import type {
 } from "./types";
 
 export const CODE_PATTERN = /^[A-Z]{2}\d{6}$/;
-
-/** Mạng chậm cũng không nên bị tính là gian lận — cho thêm 1,5 giây. */
-const NETWORK_GRACE_MS = 1500;
 
 export type ParticipantRow = {
   id: string;
@@ -53,9 +44,7 @@ export function displayNameFor(code: string, fullName: string): string {
 export async function getSettings(): Promise<Settings> {
   const { data, error } = await db()
     .from("app_settings")
-    .select(
-      "default_time_limit_s, default_points, speed_bonus, show_feedback, multi_all_or_nothing, questions_per_attempt",
-    )
+    .select("show_feedback, multi_all_or_nothing, questions_per_attempt")
     .eq("id", 1)
     .single();
   if (error) throw new Error(`Không đọc được cấu hình: ${error.message}`);
@@ -182,15 +171,15 @@ export type QuizStep =
   | {
       kind: "question";
       question: PublicQuestion;
-      /** thời gian còn lại, tính bằng đồng hồ server */
-      remainingMs: number;
-      timeLimitMs: number;
+      /** lúc câu này được phát, theo đồng hồ server — client đếm LÊN từ mốc này */
+      servedAt: string;
       showFeedback: boolean;
     };
 
 /**
  * Câu hiện tại của thí sinh. `served_at` được đặt một lần cho mỗi câu, nên
  * reload trang không làm đồng hồ chạy lại từ đầu.
+ * Không còn hạn giờ — `served_at` chỉ dùng để đo thời gian đã dùng.
  */
 export async function currentStep(participant: ParticipantRow): Promise<QuizStep> {
   const order = participant.question_order;
@@ -232,12 +221,9 @@ export async function currentStep(participant: ParticipantRow): Promise<QuizStep
     servedAt = now;
   }
 
-  const timeLimitMs = timeLimitMsFor(question, settings);
-
   return {
     kind: "question",
-    remainingMs: Math.max(0, new Date(servedAt).getTime() + timeLimitMs - Date.now()),
-    timeLimitMs,
+    servedAt,
     showFeedback: settings.show_feedback,
     question: {
       id: question.id,
@@ -245,7 +231,6 @@ export async function currentStep(participant: ParticipantRow): Promise<QuizStep
       content: question.content,
       image_url: question.image_url,
       options: displayOptions(question.options, step.options),
-      time_limit_s: Math.round(timeLimitMsFor(question, settings) / 1000),
       index: participant.cursor_index + 1,
       total: order.length,
     },
@@ -254,8 +239,8 @@ export async function currentStep(participant: ParticipantRow): Promise<QuizStep
 
 export type SubmitResult = {
   isCorrect: boolean;
-  score: number;
-  timedOut: boolean;
+  /** thí sinh bấm "Bỏ qua câu này" */
+  skipped: boolean;
   /** vị trí đáp án đúng trong danh sách ĐANG HIỂN THỊ của thí sinh này */
   correctDisplayIndexes: number[];
   correctText: string | null;
@@ -292,40 +277,27 @@ export async function submitAnswer(
   if (error) throw new Error(`Không đọc được câu hỏi: ${error.message}`);
   const question = data as Question;
 
-  const timeLimitMs = timeLimitMsFor(question, settings);
   const servedAt = participant.served_at ? new Date(participant.served_at) : new Date();
   const answeredAt = new Date();
-  const timeUsedMs = clampTimeUsed(servedAt, answeredAt, timeLimitMs);
-
-  // Quá giờ (kể cả khi client vẫn gửi đáp án) → tính là hết giờ.
-  const overtime = answeredAt.getTime() - servedAt.getTime() > timeLimitMs + NETWORK_GRACE_MS;
-  const timedOut = raw.kind === "timeout" || overtime;
+  const timeUsedMs = elapsedMs(servedAt, answeredAt);
+  const skipped = raw.kind === "skip";
 
   // Map đáp án từ hệ hiển thị về hệ gốc trước khi chấm.
   let given: GivenAnswer = raw;
-  if (timedOut) {
-    given = { kind: "timeout" };
-  } else if (raw.kind === "choice") {
+  if (raw.kind === "choice") {
     given = { kind: "choice", picked: raw.picked.map((i) => toOriginalIndex(i, step.options)) };
   }
 
-  const result = grade(question, given, settings);
-  const score = scoreFor({
-    points: pointsFor(question, settings),
-    timeLimitMs,
-    timeUsedMs,
-    grade: result,
-    speedBonus: settings.speed_bonus,
-  });
+  const isCorrect = grade(question, given, settings);
 
   const { error: insertError } = await db().from("answers").insert({
     participant_id: participant.id,
     question_id: question.id,
     order_index: participant.cursor_index + 1,
-    given: timedOut ? null : given,
-    is_correct: result.isCorrect,
+    // given null = không trả lời (bỏ qua) — đây là nguồn duy nhất để nhận ra câu bị bỏ.
+    given: skipped ? null : given,
+    is_correct: isCorrect,
     time_ms: timeUsedMs,
-    score,
   });
   // 23505 = đã có đáp án cho câu này (double-submit). Không ghi đè, đi tiếp.
   if (insertError && insertError.code !== "23505") {
@@ -358,9 +330,8 @@ export async function submitAnswer(
         : null;
 
   return {
-    isCorrect: result.isCorrect,
-    score,
-    timedOut,
+    isCorrect,
+    skipped,
     correctDisplayIndexes,
     correctText,
     explanation: question.explanation,
@@ -375,6 +346,20 @@ export async function finishParticipant(participantId: string): Promise<void> {
     .update({ finished_at: new Date().toISOString() })
     .eq("id", participantId)
     .is("finished_at", null);
+}
+
+/**
+ * Tổng số thí sinh trên bảng xếp hạng của lượt — đếm không giới hạn.
+ * `getLeaderboard` bị cắt theo `limit` (màn chiếu chỉ lấy top 10) nên không dùng
+ * độ dài mảng đó để hiển thị sĩ số được.
+ */
+export async function countLeaderboard(sessionId: string): Promise<number> {
+  const { count, error } = await db()
+    .from("leaderboard")
+    .select("participant_id", { count: "exact", head: true })
+    .eq("session_id", sessionId);
+  if (error) throw new Error(`Không đếm được thí sinh: ${error.message}`);
+  return count ?? 0;
 }
 
 export async function getLeaderboard(sessionId: string, limit = 100): Promise<LeaderboardRow[]> {
@@ -392,7 +377,6 @@ export type ReviewRow = {
   order_index: number;
   content: string;
   is_correct: boolean;
-  score: number;
   time_ms: number;
   explanation: string | null;
   /** Đáp án thí sinh đã chọn, dạng chữ. */
@@ -405,7 +389,7 @@ export async function getReview(participantId: string): Promise<ReviewRow[]> {
   const { data, error } = await db()
     .from("answers")
     .select(
-      "order_index, given, is_correct, score, time_ms, questions(content, explanation, type, options, correct)",
+      "order_index, given, is_correct, time_ms, questions(content, explanation, type, options, correct)",
     )
     .eq("participant_id", participantId)
     .order("order_index", { ascending: true });
@@ -415,7 +399,6 @@ export async function getReview(participantId: string): Promise<ReviewRow[]> {
     order_index: number;
     given: unknown;
     is_correct: boolean;
-    score: number;
     time_ms: number;
     questions: Pick<Question, "content" | "explanation" | "type" | "options" | "correct"> | null;
   };
@@ -425,7 +408,6 @@ export async function getReview(participantId: string): Promise<ReviewRow[]> {
     content: row.questions?.content ?? "(câu hỏi đã bị xoá)",
     explanation: row.questions?.explanation ?? null,
     is_correct: row.is_correct,
-    score: row.score,
     time_ms: row.time_ms,
     given_text: describeGiven(row.given, row.questions?.options ?? null),
     correct_text: row.questions ? describeCorrect(row.questions) : "—",
@@ -446,7 +428,6 @@ export async function getParticipantSummary(participantId: string) {
         code: string;
         full_name: string;
         display_name: string;
-        total_score: number;
         total_time_ms: number;
         answered_count: number;
         correct_count: number;

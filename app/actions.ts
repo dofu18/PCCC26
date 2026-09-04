@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { readParticipantCookie, setParticipantCookie } from "@/lib/auth";
+import { clearParticipantCookie, readParticipantCookie, setParticipantCookie } from "@/lib/auth";
 import {
   finishParticipant,
   getParticipant,
@@ -77,6 +77,15 @@ export async function submitAnswerAction(given: GivenAnswer): Promise<SubmitStat
       message: error instanceof Error ? error.message : "Không lưu được đáp án.",
     };
   }
+}
+
+/**
+ * Nhường máy cho thí sinh kế tiếp. Sự kiện có thể chỉ có một máy chung nên phải xoá cookie,
+ * nếu không người sau mở lên sẽ rơi thẳng vào trang kết quả của người trước.
+ */
+export async function nextParticipantAction(): Promise<void> {
+  await clearParticipantCookie();
+  redirect("/");
 }
 
 export async function finishAction(): Promise<void> {

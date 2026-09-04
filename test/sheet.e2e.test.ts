@@ -15,7 +15,7 @@ import {
   sessionSheet,
   updateSettings,
 } from "@/lib/admin-data";
-import { TIMED_OUT } from "@/lib/answer-text";
+import { NOT_ANSWERED } from "@/lib/answer-text";
 import {
   currentStep,
   getParticipant,
@@ -47,8 +47,6 @@ beforeAll(async () => {
     image_url: null,
     options: ["113", "114", "115", "116"],
     correct: [1],
-    time_limit_s: 20,
-    points: 1000,
     explanation: "114 là số của cảnh sát PCCC.",
   });
   await addQuestion(setId, {
@@ -57,8 +55,6 @@ beforeAll(async () => {
     image_url: null,
     options: null,
     correct: [true],
-    time_limit_s: 20,
-    points: 1000,
     explanation: null,
   });
 
@@ -114,14 +110,13 @@ describe("trang kết quả của thí sinh", () => {
     expect(missed!.given_text).not.toBe(missed!.correct_text);
   });
 
-  it("câu hết giờ ghi rõ là không trả lời", async () => {
+  it("câu bỏ qua ghi rõ là không trả lời", async () => {
     const joined = await joinSession({ code: "SE910002", fullName: "Hết giờ" });
     const id = (joined as { participantId: string }).participantId;
-    await play(id, { kind: "timeout" });
+    await play(id, { kind: "skip" });
 
     const review = await getReview(id);
-    expect(review[0].given_text).toBe(TIMED_OUT);
-    expect(review[0].score).toBe(0);
+    expect(review[0].given_text).toBe(NOT_ANSWERED);
     expect(review[0].is_correct).toBe(false);
   });
 });
@@ -142,24 +137,24 @@ describe("trang bài làm chi tiết ở admin", () => {
         expect(answer.question).toContain(TAG);
         expect(answer.correct_text.length).toBeGreaterThan(0);
         expect(answer.given_text.length).toBeGreaterThan(0);
-        expect(typeof answer.score).toBe("number");
         expect(typeof answer.time_ms).toBe("number");
       }
     }
   });
 
-  it("tổng điểm và số câu đúng khớp với từng câu trả lời", async () => {
+  it("số câu đúng khớp với từng câu trả lời", async () => {
     const sheet = await sessionSheet(sessionId);
     for (const person of sheet) {
-      expect(person.total_score).toBe(person.answers.reduce((sum, a) => sum + a.score, 0));
       expect(person.correct_count).toBe(person.answers.filter((a) => a.is_correct).length);
+      // tổng thời gian suy nghĩ từng câu — đã trả lời thì phải dương
+      expect(person.total_time_ms).toBeGreaterThan(0);
     }
   });
 
-  it("xếp theo điểm giảm dần", async () => {
+  it("xếp theo số câu đúng giảm dần", async () => {
     const sheet = await sessionSheet(sessionId);
-    const scores = sheet.map((p) => p.total_score);
-    expect([...scores].sort((a, b) => b - a)).toEqual(scores);
+    const correct = sheet.map((p) => p.correct_count);
+    expect([...correct].sort((a, b) => b - a)).toEqual(correct);
   });
 
   it("lượt đã kết thúc vẫn xem lại được", async () => {

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { sessionSheet } from "@/lib/admin-data";
-import { TIMED_OUT } from "@/lib/answer-text";
+import { NOT_ANSWERED } from "@/lib/answer-text";
 import { requireAdmin } from "@/lib/auth";
-import { formatDuration, formatScore, formatTime } from "@/lib/format";
+import { formatDuration, formatTime } from "@/lib/format";
 import { getSession } from "@/lib/quiz";
 
 export const dynamic = "force-dynamic";
@@ -64,8 +64,6 @@ export default async function SessionSheetPage({
                   <dd className="num">{person.code}</dd>
                   <dt>Họ tên</dt>
                   <dd>{person.full_name}</dd>
-                  <dt>Điểm</dt>
-                  <dd className="num">{formatScore(person.total_score)}</dd>
                   <dt>Số câu đúng</dt>
                   <dd className="num">
                     {person.correct_count}/{person.answers.length}
@@ -96,7 +94,6 @@ export default async function SessionSheetPage({
                           <th>Đáp án đúng</th>
                           <th>Kết quả</th>
                           <th>Thời gian</th>
-                          <th>Điểm</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -112,7 +109,7 @@ export default async function SessionSheetPage({
                             <td>
                               <span
                                 className={
-                                  answer.given_text === TIMED_OUT
+                                  answer.given_text === NOT_ANSWERED
                                     ? "is-empty"
                                     : answer.is_correct
                                       ? "is-ok"
@@ -125,7 +122,6 @@ export default async function SessionSheetPage({
                             <td>{answer.correct_text}</td>
                             <td>{answer.is_correct ? "đúng" : "chưa đúng"}</td>
                             <td className="num">{formatDuration(answer.time_ms)}</td>
-                            <td className="num">{formatScore(answer.score)}</td>
                           </tr>
                         ))}
                       </tbody>

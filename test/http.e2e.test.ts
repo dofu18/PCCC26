@@ -56,8 +56,6 @@ beforeAll(async () => {
     image_url: null,
     options: ["Alpha", "Beta", "Gamma", "Delta"],
     correct: [1],
-    time_limit_s: 20,
-    points: 1000,
     explanation: SECRET_EXPLANATION,
   });
 

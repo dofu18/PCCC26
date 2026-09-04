@@ -26,6 +26,32 @@ export type ActionState = { status: "idle" } | { status: "error"; message: strin
   message: string;
 };
 
+/** `redirect()` và `notFound()` báo hiệu bằng cách ném lỗi có `digest` — phải cho đi tiếp. */
+function isControlFlowError(error: unknown): boolean {
+  const digest = (error as { digest?: unknown } | null)?.digest;
+  return typeof digest === "string" && (digest.startsWith("NEXT_REDIRECT") || digest === "NEXT_NOT_FOUND");
+}
+
+/**
+ * Bọc thân mọi server action của BTC.
+ *
+ * Hai lỗi cũ mà hàm này chặn:
+ *  1. `requireAdmin()` gọi NGOÀI try: cookie 12h hết hạn thì nó ném ra ngoài, `useActionState`
+ *     không nhận được state nào → bấm nút im lặng, không báo gì. Giờ chạy trong try nên lỗi
+ *     hiện lên UI.
+ *  2. `redirect()` gọi TRONG try bị `catch` bắt nhầm → hiện lỗi đỏ "NEXT_REDIRECT" và không
+ *     chuyển trang. Giờ được nhận diện và ném tiếp.
+ */
+async function guard<T>(run: () => Promise<T>): Promise<T | { status: "error"; message: string }> {
+  try {
+    await requireAdmin();
+    return await run();
+  } catch (error) {
+    if (isControlFlowError(error)) throw error;
+    return { status: "error", message: message(error) };
+  }
+}
+
 /* ── Đăng nhập ────────────────────────────────────────────── */
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -58,31 +84,28 @@ export async function createSetAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
-  try {
+  return guard(async () => {
     const id = await createQuestionSet(String(formData.get("name") ?? ""));
     revalidatePath("/admin/questions");
     redirect(`/admin/questions/${id}`);
-  } catch (error) {
-    return { status: "error", message: message(error) };
-  }
+  });
 }
 
 export async function deleteSetAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
-  try {
+  return guard(async () => {
     await deleteQuestionSet(String(formData.get("setId")));
     revalidatePath("/admin/questions");
     return { status: "ok", message: "Đã xoá bộ đề." };
-  } catch (error) {
-    return { status: "error", message: message(error) };
-  }
+  });
 }
 
 /* ── Câu hỏi ──────────────────────────────────────────────── */
+
+/** Khớp với LETTERS trong lib/excel.ts — câu nhập từ Excel có tới 10 đáp án. */
+const OPTION_KEYS = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"] as const;
 
 /** Đọc form câu hỏi (dùng chung cho thêm mới và sửa). Ném lỗi nếu dữ liệu không hợp lệ. */
 function readQuestionForm(formData: FormData): QuestionInput {
@@ -90,9 +113,17 @@ function readQuestionForm(formData: FormData): QuestionInput {
   const content = String(formData.get("content") ?? "").trim();
   if (!content) throw new Error("Nhập nội dung câu hỏi.");
 
-  const options = ["a", "b", "c", "d", "e", "f"]
-    .map((key) => String(formData.get(`option_${key}`) ?? "").trim())
-    .filter(Boolean);
+  // Checkbox "đáp án đúng" mang value là vị trí GỐC trong dãy a..j, còn `options` đã bị nén
+  // để bỏ ô trống. Phải giữ bảng ánh xạ gốc→nén, nếu không thì bỏ trống một ô ở giữa sẽ làm
+  // lệch index: hoặc báo "Chọn đáp án đúng" dù đã tick, hoặc tệ hơn là lưu nhầm đáp án khác.
+  const options: string[] = [];
+  const slotToIndex = new Map<number, number>();
+  OPTION_KEYS.forEach((key, slot) => {
+    const text = String(formData.get(`option_${key}`) ?? "").trim();
+    if (!text) return;
+    slotToIndex.set(slot, options.length);
+    options.push(text);
+  });
 
   let correct: (number | boolean | string)[] = [];
 
@@ -100,8 +131,8 @@ function readQuestionForm(formData: FormData): QuestionInput {
     if (options.length < 2) throw new Error("Câu trắc nghiệm cần ít nhất 2 đáp án.");
     const picked = formData
       .getAll("correct")
-      .map((v) => Number(v))
-      .filter((n) => Number.isInteger(n) && n >= 0 && n < options.length);
+      .map((v) => slotToIndex.get(Number(v)))
+      .filter((n): n is number => n !== undefined);
     if (picked.length === 0) throw new Error("Chọn đáp án đúng.");
     if (type === "single" && picked.length > 1) {
       throw new Error("Câu một đáp án chỉ được chọn một đáp án đúng.");
@@ -124,8 +155,6 @@ function readQuestionForm(formData: FormData): QuestionInput {
     image_url: String(formData.get("image_url") ?? "").trim() || null,
     options: type === "single" || type === "multi" ? options : null,
     correct,
-    time_limit_s: numberOrNull(formData.get("time_limit_s")),
-    points: numberOrNull(formData.get("points")),
     explanation: String(formData.get("explanation") ?? "").trim() || null,
   };
 }
@@ -134,25 +163,21 @@ export async function addQuestionAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
   const setId = String(formData.get("setId"));
-  try {
+  return guard(async () => {
     await addQuestion(setId, readQuestionForm(formData));
     revalidatePath(`/admin/questions/${setId}`);
     return { status: "ok", message: "Đã thêm câu hỏi." };
-  } catch (error) {
-    return { status: "error", message: message(error) };
-  }
+  });
 }
 
 export async function editQuestionAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
   const setId = String(formData.get("setId"));
   const questionId = String(formData.get("questionId"));
-  try {
+  return guard(async () => {
     // Sửa câu của bộ đề đang chạy sẽ lệch với đề đã phát cho thí sinh (question_order
     // được chốt lúc vào phòng thi), nên chặn hẳn thay vì chỉ cảnh báo.
     if (await isSetInActiveSession(setId)) {
@@ -163,23 +188,18 @@ export async function editQuestionAction(
     await updateQuestion(questionId, readQuestionForm(formData));
     revalidatePath(`/admin/questions/${setId}`);
     return { status: "ok", message: "Đã lưu câu hỏi." };
-  } catch (error) {
-    return { status: "error", message: message(error) };
-  }
+  });
 }
 
 export async function deleteQuestionAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
-  try {
+  return guard(async () => {
     await deleteQuestion(String(formData.get("questionId")));
     revalidatePath(`/admin/questions/${String(formData.get("setId"))}`);
     return { status: "ok", message: "Đã xoá câu hỏi." };
-  } catch (error) {
-    return { status: "error", message: message(error) };
-  }
+  });
 }
 
 /* ── Nhập Excel ───────────────────────────────────────────── */
@@ -193,7 +213,6 @@ export async function importAction(
   _prev: ImportState,
   formData: FormData,
 ): Promise<ImportState> {
-  await requireAdmin();
 
   const setId = String(formData.get("setId"));
   const mode = String(formData.get("mode")) === "replace" ? "replace" : "append";
@@ -206,7 +225,7 @@ export async function importAction(
     return { status: "error", message: "File lớn hơn 8 MB — chia nhỏ ra giúp nhé." };
   }
 
-  try {
+  return guard(async () => {
     const { questions, errors } = await parseQuestionWorkbook(await file.arrayBuffer());
 
     // Có lỗi thì không lưu gì cả — tránh nhập nửa vời rồi phải dò lại.
@@ -224,9 +243,7 @@ export async function importAction(
       status: "ok",
       message: `Đã nhập ${count} câu hỏi${mode === "replace" ? " (thay toàn bộ câu cũ)" : ""}.`,
     };
-  } catch (error) {
-    return { status: "error", message: message(error) };
-  }
+  });
 }
 
 /* ── Lượt thi ─────────────────────────────────────────────── */
@@ -235,37 +252,30 @@ export async function openSessionAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
-  try {
+  return guard(async () => {
     await openSession(String(formData.get("name") ?? ""), String(formData.get("questionSetId")));
     revalidatePath("/admin");
     return { status: "ok", message: "Đã mở lượt thi." };
-  } catch (error) {
-    return { status: "error", message: message(error) };
-  }
+  });
 }
 
 export async function closeSessionAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
-  try {
+  return guard(async () => {
     await closeSession(String(formData.get("sessionId")));
     revalidatePath("/admin");
     revalidatePath("/admin/history");
     return { status: "ok", message: "Đã kết thúc lượt. Vẫn xuất Excel lại được ở Lịch sử." };
-  } catch (error) {
-    return { status: "error", message: message(error) };
-  }
+  });
 }
 
 export async function resetSessionAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
-  try {
+  return guard(async () => {
     const sessionId = String(formData.get("sessionId"));
     const nextName = String(formData.get("nextName") ?? "").trim();
     if (!nextName) return { status: "error", message: "Nhập tên lượt tiếp theo." };
@@ -277,23 +287,18 @@ export async function resetSessionAction(
       status: "ok",
       message: `Đã chuyển lượt cũ vào lịch sử và mở “${nextName}”.`,
     };
-  } catch (error) {
-    return { status: "error", message: message(error) };
-  }
+  });
 }
 
 export async function deleteSessionAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
-  try {
+  return guard(async () => {
     await deleteSession(String(formData.get("sessionId")));
     revalidatePath("/admin/history");
     return { status: "ok", message: "Đã xoá lượt và toàn bộ dữ liệu của lượt đó." };
-  } catch (error) {
-    return { status: "error", message: message(error) };
-  }
+  });
 }
 
 /* ── Cấu hình ─────────────────────────────────────────────── */
@@ -302,17 +307,7 @@ export async function saveSettingsAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireAdmin();
-  try {
-    const timeLimit = numberOrNull(formData.get("default_time_limit_s"));
-    const points = numberOrNull(formData.get("default_points"));
-    if (timeLimit === null || timeLimit < 5 || timeLimit > 300) {
-      return { status: "error", message: "Thời gian mỗi câu phải từ 5 đến 300 giây." };
-    }
-    if (points === null || points < 1) {
-      return { status: "error", message: "Điểm mỗi câu phải là số dương." };
-    }
-
+  return guard(async () => {
     // Để trống = 0 = lấy hết bộ đề.
     const raw = String(formData.get("questions_per_attempt") ?? "").trim();
     const perAttempt = raw === "" ? 0 : numberOrNull(raw);
@@ -324,10 +319,7 @@ export async function saveSettingsAction(
     }
 
     await updateSettings({
-      default_time_limit_s: timeLimit,
-      default_points: points,
       questions_per_attempt: perAttempt,
-      speed_bonus: formData.get("speed_bonus") === "on",
       show_feedback: formData.get("show_feedback") === "on",
       multi_all_or_nothing: formData.get("multi_all_or_nothing") === "on",
     });
@@ -337,9 +329,7 @@ export async function saveSettingsAction(
       status: "ok",
       message: "Đã lưu. Cấu hình mới áp dụng cho các lượt mở sau, lượt đang chạy giữ nguyên.",
     };
-  } catch (error) {
-    return { status: "error", message: message(error) };
-  }
+  });
 }
 
 /* ── Helper ───────────────────────────────────────────────── */

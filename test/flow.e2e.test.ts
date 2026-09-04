@@ -62,8 +62,6 @@ beforeAll(async () => {
     image_url: null,
     options: ["Alpha", "Beta", "Gamma", "Delta"],
     correct: [1], // Beta
-    time_limit_s: 20,
-    points: 1000,
     explanation: "Giải thích một đáp án.",
   });
   await addQuestion(setId, {
@@ -72,8 +70,6 @@ beforeAll(async () => {
     image_url: null,
     options: ["Một", "Hai", "Ba", "Bốn"],
     correct: [0, 2], // Một + Ba
-    time_limit_s: 20,
-    points: 1000,
     explanation: null,
   });
   await addQuestion(setId, {
@@ -82,8 +78,6 @@ beforeAll(async () => {
     image_url: null,
     options: null,
     correct: [true],
-    time_limit_s: 20,
-    points: 1000,
     explanation: null,
   });
   await addQuestion(setId, {
@@ -92,8 +86,6 @@ beforeAll(async () => {
     image_url: null,
     options: null,
     correct: ["Cứu hoả"],
-    time_limit_s: 20,
-    points: 1000,
     explanation: null,
   });
 
@@ -126,7 +118,7 @@ type Behaviour = "correct" | "wrong";
 
 /** Trả lời hết bài. Trả về danh sách kết quả từng câu. */
 async function playThrough(participantId: string, delayMs: number, behaviour: Behaviour) {
-  const results: { score: number; isCorrect: boolean; timedOut: boolean }[] = [];
+  const results: { isCorrect: boolean; skipped: boolean }[] = [];
 
   for (;;) {
     const participant = (await getParticipant(participantId))!;
@@ -151,7 +143,7 @@ async function playThrough(participantId: string, delayMs: number, behaviour: Be
     }
 
     const result = await submitAnswer(fresh, given);
-    results.push({ score: result.score, isCorrect: result.isCorrect, timedOut: result.timedOut });
+    results.push({ isCorrect: result.isCorrect, skipped: result.skipped });
   }
 
   return results;
@@ -180,7 +172,7 @@ describe("luồng thí sinh", () => {
     if (step.kind !== "question") return;
     expect(step.question.total).toBe(4);
     expect(step.question.index).toBe(1);
-    expect(step.remainingMs).toBeGreaterThan(15_000);
+    expect(Date.parse(step.servedAt)).toBeLessThanOrEqual(Date.now());
   });
 
   it("hai thí sinh nhận thứ tự câu khác nhau", async () => {
@@ -204,7 +196,7 @@ describe("luồng thí sinh", () => {
 });
 
 describe("chấm điểm trên DB thật", () => {
-  it("trả lời đúng và nhanh được điểm cao hơn trả lời đúng nhưng chậm", async () => {
+  it("làm nhanh và làm chậm đều đúng hết, nhưng người nhanh có tổng thời gian ít hơn", async () => {
     const fast = await joinSession({ code: "HE444444", fullName: "Võ Ngọc Ánh", force: true });
     const slow = await joinSession({ code: "HE555555", fullName: "Bùi Thanh Trúc", force: true });
     if (fast.status !== "ok" || slow.status !== "ok") throw new Error("join thất bại");
@@ -216,38 +208,29 @@ describe("chấm điểm trên DB thật", () => {
     expect(fastResults.every((r) => r.isCorrect)).toBe(true);
     expect(slowResults.every((r) => r.isCorrect)).toBe(true);
 
-    // Điểm phụ thuộc thời gian thực nên assert theo khoảng: round-trip mạng
-    // cộng thêm vài trăm ms vào thời gian trả lời. Công thức chính xác đã có
-    // unit test trong lib/scoring.test.ts.
-    // ~1 giây / 20 giây → quanh 975
-    expect(fastResults[0].score).toBeGreaterThan(930);
-    expect(fastResults[0].score).toBeLessThanOrEqual(1000);
-    // ~16 giây / 20 giây → quanh 600
-    expect(slowResults[0].score).toBeGreaterThan(560);
-    expect(slowResults[0].score).toBeLessThan(640);
-
     const fastSummary = await getParticipantSummary(fast.participantId);
     const slowSummary = await getParticipantSummary(slow.participantId);
-    expect(fastSummary!.total_score).toBeGreaterThan(930 * 4);
     expect(fastSummary!.correct_count).toBe(4);
-    expect(fastSummary!.total_score).toBeGreaterThan(slowSummary!.total_score);
+    expect(slowSummary!.correct_count).toBe(4);
     expect(fastSummary!.finished_at).not.toBeNull();
+
+    // Không còn trần thời gian: ngồi 16 giây/câu vẫn được tính đủ 16 giây.
+    expect(slowSummary!.total_time_ms).toBeGreaterThan(fastSummary!.total_time_ms);
   }, 60_000);
 
-  it("trả lời sai được 0 điểm, không bị trừ", async () => {
+  it("trả lời sai vẫn được ghi nhận, chỉ là không tính đúng", async () => {
     const join = await joinSession({ code: "HE666666", fullName: "Đặng Hải Long", force: true });
     if (join.status !== "ok") throw new Error("join thất bại");
 
     const results = await playThrough(join.participantId, 500, "wrong");
-    expect(results.every((r) => r.score === 0)).toBe(true);
     expect(results.every((r) => !r.isCorrect)).toBe(true);
 
     const summary = await getParticipantSummary(join.participantId);
-    expect(summary!.total_score).toBe(0);
     expect(summary!.correct_count).toBe(0);
+    expect(summary!.answered_count).toBe(4);
   }, 60_000);
 
-  it("quá giờ bị tính hết giờ dù client vẫn gửi đáp án đúng", async () => {
+  it("ngồi rất lâu không còn bị tính hết giờ — đáp án đúng vẫn được công nhận", async () => {
     const join = await joinSession({ code: "HE777777", fullName: "Ngô Bảo Châu", force: true });
     if (join.status !== "ok") throw new Error("join thất bại");
 
@@ -255,7 +238,7 @@ describe("chấm điểm trên DB thật", () => {
     const step = await currentStep(participant);
     if (step.kind !== "question") throw new Error("không có câu hỏi");
 
-    // Kéo served_at về 40 giây trước — vượt giới hạn 20 giây + 1,5 giây bù mạng.
+    // 40 giây — trước đây quá hạn 20 giây thì bị tính là hết giờ và mất câu.
     await backdateServedAt(join.participantId, 40_000);
     const fresh = (await getParticipant(join.participantId))!;
 
@@ -272,12 +255,45 @@ describe("chấm điểm trên DB thật", () => {
             : { kind: "text", value: "cuu hoa" };
 
     const result = await submitAnswer(fresh, given);
-    expect(result.timedOut).toBe(true);
-    expect(result.isCorrect).toBe(false);
-    expect(result.score).toBe(0);
+    expect(result.isCorrect).toBe(true);
+    expect(result.skipped).toBe(false);
+
+    const { data } = await db()
+      .from("answers")
+      .select("time_ms")
+      .eq("participant_id", join.participantId)
+      .single();
+    expect(data!.time_ms).toBeGreaterThan(39_000);
   }, 60_000);
 
-  it("gửi lại đáp án cho cùng một câu không cộng điểm lần hai", async () => {
+  it("bỏ qua câu: tính sai, không lưu đáp án, vẫn đi tiếp", async () => {
+    const join = await joinSession({ code: "HE999999", fullName: "Lý Gia Bảo", force: true });
+    if (join.status !== "ok") throw new Error("join thất bại");
+
+    const participant = (await getParticipant(join.participantId))!;
+    const before = (await currentStep(participant)).kind;
+    expect(before).toBe("question");
+
+    const result = await submitAnswer((await getParticipant(join.participantId))!, {
+      kind: "skip",
+    });
+    expect(result.isCorrect).toBe(false);
+    expect(result.skipped).toBe(true);
+
+    const { data } = await db()
+      .from("answers")
+      .select("given, is_correct")
+      .eq("participant_id", join.participantId)
+      .single();
+    expect(data!.given).toBeNull();
+    expect(data!.is_correct).toBe(false);
+
+    // Con trỏ đã nhảy sang câu sau.
+    const after = (await getParticipant(join.participantId))!;
+    expect(after.cursor_index).toBe(1);
+  }, 60_000);
+
+  it("gửi lại đáp án cho cùng một câu không ghi thêm dòng thứ hai", async () => {
     const join = await joinSession({ code: "HE888888", fullName: "Hoàng Thị Mai", force: true });
     if (join.status !== "ok") throw new Error("join thất bại");
 
@@ -285,11 +301,11 @@ describe("chấm điểm trên DB thật", () => {
     const step = await currentStep(participant);
     if (step.kind !== "question") throw new Error("không có câu hỏi");
 
-    const first = await submitAnswer(participant, { kind: "timeout" });
-    expect(first.score).toBe(0);
+    const first = await submitAnswer(participant, { kind: "skip" });
+    expect(first.isCorrect).toBe(false);
 
     // participant cũ vẫn trỏ vào câu 1 (cursor chưa cập nhật trong biến local)
-    await submitAnswer(participant, { kind: "timeout" }).catch(() => undefined);
+    await submitAnswer(participant, { kind: "skip" }).catch(() => undefined);
 
     const { count } = await db()
       .from("answers")
@@ -300,7 +316,7 @@ describe("chấm điểm trên DB thật", () => {
 });
 
 describe("bảng xếp hạng", () => {
-  it("mỗi mã số chỉ xuất hiện một lần, lấy lượt điểm cao nhất", async () => {
+  it("mỗi mã số chỉ xuất hiện một lần, lấy lượt làm tốt nhất", async () => {
     // HE111111 có 2 lượt: lượt 1 chưa trả lời gì, lượt 2 trả lời đúng hết.
     const attempts = await db()
       .from("participants")
@@ -316,24 +332,25 @@ describe("bảng xếp hạng", () => {
     const rowsForCode = board.filter((r) => r.code === "HE111111");
     expect(rowsForCode).toHaveLength(1);
     expect(rowsForCode[0].attempt_no).toBe(2);
-    expect(rowsForCode[0].total_score).toBeGreaterThan(0);
+    expect(rowsForCode[0].correct_count).toBeGreaterThan(0);
   }, 60_000);
 
-  it("xếp hạng theo điểm giảm dần, hạng 1 là người điểm cao nhất", async () => {
+  it("xếp theo số câu đúng giảm dần, bằng nhau thì ai nhanh hơn xếp trên", async () => {
     const board = await getLeaderboard(sessionId, 100);
     expect(board.length).toBeGreaterThan(2);
     expect(board[0].rank).toBe(1);
 
     for (let i = 1; i < board.length; i++) {
-      expect(board[i - 1].total_score).toBeGreaterThanOrEqual(board[i].total_score);
-      // đồng điểm thì ai nhanh hơn xếp trên
-      if (board[i - 1].total_score === board[i].total_score) {
+      expect(board[i - 1].correct_count).toBeGreaterThanOrEqual(board[i].correct_count);
+      // bằng số câu đúng thì ai tổng thời gian ít hơn xếp trên
+      if (board[i - 1].correct_count === board[i].correct_count) {
         expect(board[i - 1].total_time_ms).toBeLessThanOrEqual(board[i].total_time_ms);
       }
     }
 
-    // HE444444 trả lời đúng hết và nhanh nhất → phải đứng đầu
+    // HE444444 đúng hết 4 câu và nhanh nhất → phải đứng đầu
     expect(board[0].code).toBe("HE444444");
+    expect(board[0].correct_count).toBe(4);
   }, 60_000);
 });
 
@@ -353,7 +370,8 @@ describe("xuất Excel", () => {
     const board = wb.getWorksheet("Bảng xếp hạng")!;
     expect(board.getRow(2).getCell(2).value).toBe(rows[0].code);
     expect(board.getRow(2).getCell(3).value).toBe(rows[0].full_name);
-    expect(board.getRow(2).getCell(5).value).toBe(rows[0].total_score);
+    expect(board.getRow(2).getCell(5).value).toBe(rows[0].correct_count);
+    expect(board.getRow(1).values).not.toContain("Điểm");
 
     // tiếng Việt có dấu phải nguyên vẹn
     const names = rows.map((r) => r.full_name);

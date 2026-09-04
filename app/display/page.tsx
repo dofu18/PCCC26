@@ -1,6 +1,6 @@
 import { Nav, SetupNotice } from "../_components/chrome";
-import { LiveLeaderboard } from "../_components/leaderboard";
-import { getActiveSession, getLeaderboard } from "@/lib/quiz";
+import { LiveLeaderboard, LiveParticipantCount } from "../_components/leaderboard";
+import { countLeaderboard, getActiveSession, getLeaderboard } from "@/lib/quiz";
 import { isConfigured } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,9 @@ export default async function DisplayPage() {
   if (!isConfigured()) return <SetupNotice />;
 
   const session = await getActiveSession();
-  const board = session ? await getLeaderboard(session.id, 10) : [];
+  const [board, participantCount] = session
+    ? await Promise.all([getLeaderboard(session.id, 10), countLeaderboard(session.id)])
+    : [[], 0];
 
   return (
     <main className="stage">
@@ -23,7 +25,19 @@ export default async function DisplayPage() {
             meta={
               <span className="live">
                 <span className="live__dot" aria-hidden="true" />
-                {session ? `${session.name} · ${board.length} thí sinh` : "Chưa mở lượt"}
+                {session ? (
+                  <>
+                    {session.name} ·{" "}
+                    <LiveParticipantCount
+                      sessionId={session.id}
+                      limit={10}
+                      initial={participantCount}
+                    />{" "}
+                    thí sinh
+                  </>
+                ) : (
+                  "Chưa mở lượt"
+                )}
               </span>
             }
           />
@@ -45,7 +59,6 @@ export default async function DisplayPage() {
                 code: row.code,
                 display_name: row.display_name,
                 full_name: row.full_name,
-                total_score: row.total_score,
                 total_time_ms: row.total_time_ms,
                 correct_count: row.correct_count,
                 answered_count: row.answered_count,
@@ -56,6 +69,18 @@ export default async function DisplayPage() {
             <p className="lede">Chưa có lượt thi nào đang mở.</p>
           )}
         </div>
+
+        {/* Người đến muộn quét thẳng từ màn chiếu, không cần đi hỏi bàn tiếp đón.
+            SVG nên phóng to bao nhiêu cũng nét. */}
+        <aside className="stage-qr">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/qr-pccc26.svg" alt="" width={148} height={148} />
+          <p>
+            Quét để vào thi
+            <br />
+            <span className="num">pccc26.vercel.app</span>
+          </p>
+        </aside>
       </section>
     </main>
   );

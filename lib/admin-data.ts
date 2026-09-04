@@ -250,7 +250,7 @@ export async function answerDetails(sessionId: string): Promise<AnswerDetail[]> 
   const { data, error } = await db()
     .from("answers")
     .select(
-      "order_index, given, is_correct, time_ms, score, participants!inner(code, full_name, session_id), questions(content, options, type)",
+      "order_index, given, is_correct, time_ms, participants!inner(code, full_name, session_id), questions(content, options, type)",
     )
     .eq("participants.session_id", sessionId)
     .order("order_index", { ascending: true });
@@ -261,7 +261,6 @@ export async function answerDetails(sessionId: string): Promise<AnswerDetail[]> 
     given: unknown;
     is_correct: boolean;
     time_ms: number;
-    score: number;
     participants: { code: string; full_name: string } | null;
     questions: { content: string; options: string[] | null; type: string } | null;
   };
@@ -275,7 +274,6 @@ export async function answerDetails(sessionId: string): Promise<AnswerDetail[]> 
       given_text: describeGiven(row.given, row.questions?.options ?? null),
       is_correct: row.is_correct,
       time_ms: row.time_ms,
-      score: row.score,
     }))
     .sort((a, b) => a.code.localeCompare(b.code) || a.order_index - b.order_index);
 }
@@ -290,7 +288,6 @@ export type ParticipantAnswer = {
   correct_text: string;
   is_correct: boolean;
   time_ms: number;
-  score: number;
 };
 
 export type ParticipantSheet = {
@@ -301,7 +298,6 @@ export type ParticipantSheet = {
   attempt_no: number;
   started_at: string;
   finished_at: string | null;
-  total_score: number;
   total_time_ms: number;
   correct_count: number;
   answers: ParticipantAnswer[];
@@ -316,7 +312,7 @@ export async function sessionSheet(sessionId: string): Promise<ParticipantSheet[
   const { data, error } = await db()
     .from("participants")
     .select(
-      "id, code, full_name, display_name, attempt_no, started_at, finished_at, answers(order_index, given, is_correct, time_ms, score, questions(content, type, options, correct))",
+      "id, code, full_name, display_name, attempt_no, started_at, finished_at, answers(order_index, given, is_correct, time_ms, questions(content, type, options, correct))",
     )
     .eq("session_id", sessionId);
   if (error) throw new Error(`Không đọc được bài làm của lượt: ${error.message}`);
@@ -326,7 +322,6 @@ export async function sessionSheet(sessionId: string): Promise<ParticipantSheet[
     given: unknown;
     is_correct: boolean;
     time_ms: number;
-    score: number;
     questions: Pick<Question, "content" | "type" | "options" | "correct"> | null;
   };
   type Joined = {
@@ -352,7 +347,6 @@ export async function sessionSheet(sessionId: string): Promise<ParticipantSheet[
           correct_text: answer.questions ? describeCorrect(answer.questions) : "—",
           is_correct: answer.is_correct,
           time_ms: answer.time_ms,
-          score: answer.score,
         }));
 
       return {
@@ -363,7 +357,8 @@ export async function sessionSheet(sessionId: string): Promise<ParticipantSheet[
         attempt_no: row.attempt_no,
         started_at: row.started_at,
         finished_at: row.finished_at,
-        total_score: answers.reduce((sum, a) => sum + a.score, 0),
+        // Tổng thời gian suy nghĩ từng câu — khớp với view participant_scores trong SQL.
+        // Không tính thời gian đọc giải thích giữa các câu.
         total_time_ms: answers.reduce((sum, a) => sum + a.time_ms, 0),
         correct_count: answers.filter((a) => a.is_correct).length,
         answers,
@@ -371,7 +366,7 @@ export async function sessionSheet(sessionId: string): Promise<ParticipantSheet[
     })
     .sort(
       (a, b) =>
-        b.total_score - a.total_score ||
+        b.correct_count - a.correct_count ||
         a.total_time_ms - b.total_time_ms ||
         a.code.localeCompare(b.code),
     );

@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { ErrorNotice, Footer, Nav, SetupNotice } from "../_components/chrome";
 import { CountUp } from "../_components/count-up";
 import { LiveLeaderboard } from "../_components/leaderboard";
+import { nextParticipantAction } from "../actions";
 import { readParticipantCookie } from "@/lib/auth";
-import { TIMED_OUT } from "@/lib/answer-text";
-import { formatDuration, formatScore } from "@/lib/format";
+import { NOT_ANSWERED } from "@/lib/answer-text";
+import { formatDuration } from "@/lib/format";
 import { getLeaderboard, getParticipant, getParticipantSummary, getReview } from "@/lib/quiz";
 import { isConfigured } from "@/lib/supabase";
 
@@ -35,7 +36,7 @@ export default async function ResultPage() {
   const mine = board.find((row) => row.participant_id === participantId);
   const totalQuestions = participant.question_order.length;
   const answered = summary?.answered_count ?? 0;
-  const timedOut = review.filter((row) => row.score === 0 && !row.is_correct).length;
+  const skipped = review.filter((row) => row.given_text === NOT_ANSWERED).length;
   const fastest = review.length ? Math.min(...review.map((row) => row.time_ms)) : 0;
 
   return (
@@ -53,12 +54,13 @@ export default async function ResultPage() {
               <span className="num">{participant.code}</span> - {participant.full_name}
             </p>
             <p className="score num">
-              <CountUp value={summary?.total_score ?? 0} />
+              <CountUp value={summary?.correct_count ?? 0} />
+              <span className="score__of">/{totalQuestions}</span>
             </p>
             <p className="lede" style={{ marginTop: "var(--space-sm)" }}>
               {mine
-                ? `điểm — đang xếp hạng ${mine.rank} trong lượt này.`
-                : "điểm — chờ bảng xếp hạng cập nhật."}
+                ? `câu đúng trong ${formatDuration(summary?.total_time_ms ?? 0)} — đang xếp hạng ${mine.rank} trong lượt này.`
+                : `câu đúng trong ${formatDuration(summary?.total_time_ms ?? 0)} — chờ bảng xếp hạng cập nhật.`}
             </p>
 
             <dl className="facts stagger">
@@ -73,22 +75,29 @@ export default async function ResultPage() {
                 <dd className="fact__v num">{formatDuration(summary?.total_time_ms ?? 0)}</dd>
               </div>
               <div>
-                <dt className="fact__k">Nhanh nhất</dt>
+                <dt className="fact__k">Câu nhanh nhất</dt>
                 <dd className="fact__v num">{review.length ? formatDuration(fastest) : "—"}</dd>
               </div>
               <div>
-                <dt className="fact__k">Câu chưa có điểm</dt>
-                <dd className="fact__v num">{timedOut}</dd>
+                <dt className="fact__k">Câu đã bỏ qua</dt>
+                <dd className="fact__v num">{skipped}</dd>
               </div>
             </dl>
 
-            {answered < totalQuestions && !participant.finished_at ? (
-              <div className="btn-row">
+            <div className="btn-row">
+              {answered < totalQuestions && !participant.finished_at ? (
                 <Link className="btn btn--primary" href="/quiz" style={{ width: "auto" }}>
                   Làm tiếp
                 </Link>
-              </div>
-            ) : null}
+              ) : null}
+              {/* Sự kiện có thể chỉ có một máy chung — nút này xoá cookie và trả về trang
+                  nhập mã để người kế tiếp vào ngay, không phải xoá lịch sử trình duyệt. */}
+              <form action={nextParticipantAction} style={{ display: "contents" }}>
+                <button className="btn btn--ghost" type="submit">
+                  Thí sinh tiếp theo
+                </button>
+              </form>
+            </div>
           </div>
         </section>
 
@@ -106,7 +115,6 @@ export default async function ResultPage() {
                 code: row.code,
                 display_name: row.display_name,
                 full_name: row.full_name,
-                total_score: row.total_score,
                 total_time_ms: row.total_time_ms,
                 correct_count: row.correct_count,
                 answered_count: row.answered_count,
@@ -130,14 +138,14 @@ export default async function ResultPage() {
                   <div className="panel" key={row.order_index}>
                     <p className="meta">
                       Câu {row.order_index} · {row.is_correct ? "đúng" : "chưa đúng"} ·{" "}
-                      {formatScore(row.score)} điểm · {formatDuration(row.time_ms)}
+                      {formatDuration(row.time_ms)}
                     </p>
                     <p style={{ fontWeight: 600, marginTop: "var(--space-2xs)" }}>{row.content}</p>
                     <dl className="ans">
                       <dt>Bạn trả lời</dt>
                       <dd
                         className={
-                          row.given_text === TIMED_OUT
+                          row.given_text === NOT_ANSWERED
                             ? "is-empty"
                             : row.is_correct
                               ? "is-ok"

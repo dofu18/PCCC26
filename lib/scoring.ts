@@ -24,113 +24,55 @@ function sameSet(a: number[], b: number[]): boolean {
   return sa.every((v, i) => v === sb[i]);
 }
 
-export type Grade = {
-  isCorrect: boolean;
-  /** 0..1 — dùng cho luật điểm từng phần của câu nhiều đáp án */
-  ratio: number;
-};
-
 /**
- * Chấm một câu. `given` đã được map về hệ toạ độ GỐC của questions.options.
+ * Chấm một câu: đúng hay sai, không có điểm.
+ * `given` đã được map về hệ toạ độ GỐC của questions.options.
  */
 export function grade(
   question: Pick<Question, "type" | "correct">,
   given: GivenAnswer,
   settings: Pick<Settings, "multi_all_or_nothing">,
-): Grade {
-  if (given.kind === "timeout") return { isCorrect: false, ratio: 0 };
+): boolean {
+  // Bỏ qua câu = không trả lời = sai.
+  if (given.kind === "skip") return false;
 
   switch (question.type) {
     case "single": {
-      if (given.kind !== "choice" || given.picked.length !== 1) {
-        return { isCorrect: false, ratio: 0 };
-      }
-      const ok = given.picked[0] === Number(question.correct[0]);
-      return { isCorrect: ok, ratio: ok ? 1 : 0 };
+      if (given.kind !== "choice" || given.picked.length !== 1) return false;
+      return given.picked[0] === Number(question.correct[0]);
     }
 
     case "multi": {
-      if (given.kind !== "choice") return { isCorrect: false, ratio: 0 };
+      if (given.kind !== "choice") return false;
       const correct = question.correct.map(Number);
       const picked = [...new Set(given.picked)];
+      if (settings.multi_all_or_nothing) return sameSet(picked, correct);
+
+      // Chấm lỏng: chọn sai trừ lại phần đã đúng, còn dư mới tính là đúng.
       const hits = picked.filter((p) => correct.includes(p)).length;
       const misses = picked.filter((p) => !correct.includes(p)).length;
-      const exact = sameSet(picked, correct);
-
-      if (settings.multi_all_or_nothing) {
-        return { isCorrect: exact, ratio: exact ? 1 : 0 };
-      }
-      // Điểm từng phần: chọn sai trừ lại phần đã đúng, không xuống dưới 0.
-      const ratio = correct.length === 0 ? 0 : Math.max(0, (hits - misses) / correct.length);
-      return { isCorrect: ratio > 0, ratio };
+      return correct.length > 0 && hits - misses > 0;
     }
 
     case "boolean": {
-      if (given.kind !== "boolean") return { isCorrect: false, ratio: 0 };
-      const ok = given.value === Boolean(question.correct[0]);
-      return { isCorrect: ok, ratio: ok ? 1 : 0 };
+      if (given.kind !== "boolean") return false;
+      return given.value === Boolean(question.correct[0]);
     }
 
     case "text": {
-      if (given.kind !== "text") return { isCorrect: false, ratio: 0 };
+      if (given.kind !== "text") return false;
       const needle = normalizeText(given.value);
-      if (!needle) return { isCorrect: false, ratio: 0 };
-      const ok = question.correct.some((c) => normalizeText(String(c)) === needle);
-      return { isCorrect: ok, ratio: ok ? 1 : 0 };
+      if (!needle) return false;
+      return question.correct.some((c) => normalizeText(String(c)) === needle);
     }
   }
 }
 
-export type ScoreInput = {
-  points: number;
-  timeLimitMs: number;
-  timeUsedMs: number;
-  grade: Grade;
-  speedBonus: boolean;
-};
-
 /**
- * Điểm kiểu Kahoot: trả lời càng nhanh càng nhiều điểm, sai không bị trừ.
- *
- *   sai / hết giờ → 0
- *   đúng          → round(points * ratio * (1 - (timeUsed / timeLimit) / 2))
- *
- * Trả lời tức thì ≈ points đầy đủ; trả lời sát giờ ≈ points/2.
+ * Thời gian thí sinh dùng cho một câu, tính từ lúc câu được phát tới lúc nhận đáp án.
+ * Không còn trần vì đã bỏ giới hạn thời gian. Đồng hồ chạy lùi thì tính 0.
  */
-export function scoreFor({
-  points,
-  timeLimitMs,
-  timeUsedMs,
-  grade,
-  speedBonus,
-}: ScoreInput): number {
-  if (grade.ratio <= 0) return 0;
-
-  const base = points * grade.ratio;
-  if (!speedBonus) return Math.round(base);
-
-  const limit = Math.max(1, timeLimitMs);
-  const used = Math.min(Math.max(0, timeUsedMs), limit);
-  return Math.round(base * (1 - used / limit / 2));
-}
-
-/** Thời gian đã dùng, luôn nằm trong [0, timeLimit]. Chống đồng hồ client. */
-export function clampTimeUsed(servedAt: Date, answeredAt: Date, timeLimitMs: number): number {
+export function elapsedMs(servedAt: Date, answeredAt: Date): number {
   const raw = answeredAt.getTime() - servedAt.getTime();
-  if (!Number.isFinite(raw) || raw < 0) return timeLimitMs;
-  return Math.min(raw, timeLimitMs);
-}
-
-export function timeLimitMsFor(
-  question: Pick<Question, "time_limit_s">,
-  settings: Pick<Settings, "default_time_limit_s">,
-): number {
-  return (question.time_limit_s ?? settings.default_time_limit_s) * 1000;
-}
-
-export function pointsFor(
-  question: Pick<Question, "points">,
-  settings: Pick<Settings, "default_points">,
-): number {
-  return question.points ?? settings.default_points;
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
 }

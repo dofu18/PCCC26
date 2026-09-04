@@ -21,6 +21,9 @@ import type { Question, QuestionType, Settings } from "@/lib/types";
 
 const idle: ActionState = { status: "idle" };
 
+/** Khớp với OPTION_KEYS ở actions.ts và LETTERS ở lib/excel.ts. */
+const OPTION_KEYS = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
+
 function Feedback({ state }: { state: ActionState | ImportState }) {
   if (state.status === "idle") return null;
   return (
@@ -376,7 +379,7 @@ const CORRECT_BY_TYPE: { type: string; value: string; note: string }[] = [
   {
     type: "multi",
     value: "A,B,C",
-    note: "Nhiều chữ cái cách nhau bởi dấu phẩy. Thí sinh phải chọn đúng hết mới được điểm.",
+    note: "Nhiều chữ cái cách nhau bởi dấu phẩy. Thí sinh phải chọn đúng hết mới được tính đúng.",
   },
   { type: "boolean", value: "FALSE", note: "TRUE / FALSE, hoặc Đúng / Sai, hoặc 1 / 0." },
   {
@@ -510,7 +513,10 @@ export function ExcelFormatHelp() {
               Thứ tự câu và thứ tự đáp án được <strong>trộn riêng cho từng thí sinh</strong>, nên
               đừng soạn câu kiểu “cả A và B đều đúng”.
             </li>
-            <li>Trả lời càng nhanh thì càng nhiều điểm. Trả lời sai không bị trừ điểm.</li>
+            <li>
+              Xếp hạng theo <strong>số câu đúng</strong>; bằng số câu đúng thì ai{" "}
+              <strong>tổng thời gian ít hơn</strong> xếp trên. Không giới hạn giờ mỗi câu.
+            </li>
             <li>
               Nếu file có dòng sai định dạng, hệ thống <strong>không lưu gì cả</strong> và báo rõ sai
               ở dòng nào — sửa rồi nhập lại là được.
@@ -612,6 +618,10 @@ export function QuestionForm({
   const isChoice = type === "single" || type === "multi";
 
   const options = question?.options ?? [];
+  // Hiện 4 ô cho gọn; câu đang sửa thì mở đủ số đáp án nó có. BTC bấm thêm khi cần.
+  const [slots, setSlots] = useState(
+    Math.min(OPTION_KEYS.length, Math.max(4, options.length)),
+  );
   const correctIndexes = new Set(
     question && (question.type === "single" || question.type === "multi")
       ? question.correct.map((c) => Number(c))
@@ -621,10 +631,10 @@ export function QuestionForm({
     question?.type === "boolean" ? String(question.correct[0] === true) : "true";
   const correctText = question?.type === "text" ? question.correct.map(String).join(" | ") : "";
 
-  // Đóng form sửa ngay khi lưu xong để danh sách hiện lại nội dung mới.
+  // Lưu xong thì báo cho parent: chế độ sửa đóng dialog, chế độ thêm remount form cho sạch.
   useEffect(() => {
-    if (editing && state.status === "ok") onDone?.();
-  }, [editing, state, onDone]);
+    if (state.status === "ok") onDone?.();
+  }, [state, onDone]);
 
   return (
     <form action={action}>
@@ -671,7 +681,7 @@ export function QuestionForm({
       {isChoice ? (
         <fieldset style={{ border: 0, padding: 0, margin: "0 0 var(--space-md)" }}>
           <legend className="field__label">Đáp án — tick vào ô đúng</legend>
-          {["a", "b", "c", "d", "e", "f"].map((key, index) => (
+          {OPTION_KEYS.slice(0, slots).map((key, index) => (
             <div
               key={key}
               style={{ display: "flex", gap: "var(--space-xs)", marginBottom: "var(--space-xs)" }}
@@ -696,6 +706,15 @@ export function QuestionForm({
               />
             </div>
           ))}
+          {slots < OPTION_KEYS.length ? (
+            <button
+              className="btn btn--ghost"
+              type="button"
+              onClick={() => setSlots((n) => Math.min(OPTION_KEYS.length, n + 1))}
+            >
+              + Thêm ô đáp án
+            </button>
+          ) : null}
         </fieldset>
       ) : null}
 
@@ -725,27 +744,6 @@ export function QuestionForm({
         </label>
       ) : null}
 
-      <div style={{ display: "grid", gap: "var(--space-md)", gridTemplateColumns: "1fr 1fr" }}>
-        <label className="field">
-          <span className="field__label">Giây (trống = mặc định)</span>
-          <input
-            className="field__input num"
-            name="time_limit_s"
-            inputMode="numeric"
-            defaultValue={question?.time_limit_s ?? ""}
-          />
-        </label>
-        <label className="field">
-          <span className="field__label">Điểm (trống = mặc định)</span>
-          <input
-            className="field__input num"
-            name="points"
-            inputMode="numeric"
-            defaultValue={question?.points ?? ""}
-          />
-        </label>
-      </div>
-
       <label className="field">
         <span className="field__label">Giải thích hiện sau khi trả lời</span>
         <textarea
@@ -771,7 +769,10 @@ export function QuestionForm({
 }
 
 export function AddQuestionForm({ setId }: { setId: string }) {
-  return <QuestionForm setId={setId} />;
+  // Thêm xong thì tăng `gen` để React dựng lại form từ đầu — sạch cả input lẫn state dạng câu.
+  // Trước đây form giữ nguyên nội dung cũ nên BTC gõ câu tiếp theo dễ tưởng nút không ăn.
+  const [gen, setGen] = useState(0);
+  return <QuestionForm key={gen} setId={setId} onDone={() => setGen((n) => n + 1)} />;
 }
 
 /** Nút "Sửa" mở form câu hỏi trong dialog — danh sách là bảng nên không chèn form inline được. */
@@ -829,29 +830,6 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     <form action={action}>
       <Feedback state={state} />
 
-      <div style={{ display: "grid", gap: "var(--space-md)", gridTemplateColumns: "1fr 1fr" }}>
-        <label className="field">
-          <span className="field__label">Giây mỗi câu</span>
-          <input
-            className="field__input num"
-            name="default_time_limit_s"
-            inputMode="numeric"
-            defaultValue={settings.default_time_limit_s}
-            required
-          />
-        </label>
-        <label className="field">
-          <span className="field__label">Điểm mỗi câu</span>
-          <input
-            className="field__input num"
-            name="default_points"
-            inputMode="numeric"
-            defaultValue={settings.default_points}
-            required
-          />
-        </label>
-      </div>
-
       <label className="field">
         <span className="field__label">Số câu mỗi lượt</span>
         <input
@@ -868,13 +846,6 @@ export function SettingsForm({ settings }: { settings: Settings }) {
       </label>
 
       <label className="dlg__check">
-        <input type="checkbox" name="speed_bonus" defaultChecked={settings.speed_bonus} />
-        <span>
-          Trả lời càng nhanh càng nhiều điểm. Tắt thì mọi câu đúng được điểm bằng nhau.
-        </span>
-      </label>
-
-      <label className="dlg__check">
         <input type="checkbox" name="show_feedback" defaultChecked={settings.show_feedback} />
         <span>Hiện đúng/sai và giải thích ngay sau mỗi câu.</span>
       </label>
@@ -886,7 +857,8 @@ export function SettingsForm({ settings }: { settings: Settings }) {
           defaultChecked={settings.multi_all_or_nothing}
         />
         <span>
-          Câu nhiều đáp án: phải đúng hết mới được điểm. Tắt thì tính điểm từng phần.
+          Câu nhiều đáp án: phải chọn đúng hết mới được tính đúng. Tắt thì chọn đúng nhiều hơn
+          sai là được tính đúng.
         </span>
       </label>
 

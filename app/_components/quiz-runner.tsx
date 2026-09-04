@@ -11,18 +11,17 @@ const LETTERS = "ABCDEFGHIJ";
 
 type Props = {
   question: PublicQuestion;
-  /** thời gian còn lại tính bởi server lúc render — client chỉ đếm tiếp */
-  remainingMs: number;
-  timeLimitMs: number;
+  /** lúc server phát câu này (ISO) — client đếm LÊN từ mốc đó */
+  servedAt: string;
 };
 
-export function QuizRunner({ question, remainingMs, timeLimitMs }: Props) {
+export function QuizRunner({ question, servedAt }: Props) {
   const router = useRouter();
   const [picked, setPicked] = useState<number[]>([]);
   const [text, setText] = useState("");
   const [feedback, setFeedback] = useState<SubmitResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [remaining, setRemaining] = useState(Math.max(0, remainingMs));
+  const [elapsed, setElapsed] = useState(0);
   const [pending, startTransition] = useTransition();
   const sentRef = useRef(false);
 
@@ -48,27 +47,24 @@ export function QuizRunner({ question, remainingMs, timeLimitMs }: Props) {
     [router],
   );
 
-  // Đồng hồ: đếm ngược từ thời gian server đưa xuống, không đọc đồng hồ máy thí sinh.
+  // Đồng hồ đếm LÊN. Không có hạn giờ, không tự nộp — chỉ cho thí sinh thấy thời gian
+  // đang được tính, vì tổng thời gian là tiêu chí xếp hạng khi bằng số câu đúng.
+  // Mốc là served_at của server; chênh lệch đồng hồ máy thí sinh chỉ ảnh hưởng phần hiển
+  // thị, còn thời gian tính điểm vẫn do server đo.
   useEffect(() => {
     if (feedback) return;
-    const deadline = Date.now() + Math.max(0, remainingMs);
-    const tick = () => {
-      const left = deadline - Date.now();
-      setRemaining(Math.max(0, left));
-      if (left <= 0) send({ kind: "timeout" });
-    };
+    const start = new Date(servedAt).getTime();
+    const tick = () => setElapsed(Math.max(0, Date.now() - start));
     tick();
-    const id = window.setInterval(tick, 200);
+    const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [remainingMs, feedback, send]);
+  }, [servedAt, feedback]);
 
   // Không cần dọn state khi sang câu mới: trang truyền `key={question.id}`
   // nên React tự dựng lại component với state ban đầu.
 
-  const seconds = Math.ceil(remaining / 1000);
-  const fill = timeLimitMs > 0 ? Math.max(0, Math.min(1, remaining / timeLimitMs)) : 0;
-  // 5 giây cuối: số nhịp mạnh lên và thanh thời gian sáng hơn — nhìn là biết phải nhanh.
-  const low = !feedback && remaining > 0 && remaining <= 5000;
+  const totalSeconds = Math.floor(elapsed / 1000);
+  const clock = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
   const locked = Boolean(feedback) || pending;
 
   function next() {
@@ -91,19 +87,13 @@ export function QuizRunner({ question, remainingMs, timeLimitMs }: Props) {
             <span className="qbar__count num">
               Câu {question.index} / {question.total}
             </span>
-            <span className={`qbar__timer num${low ? " qbar__timer--low" : ""}`} aria-hidden="true">
-              {feedback ? "—" : seconds}
+            <span className="qbar__timer num" aria-hidden="true">
+              {feedback ? "—" : clock}
             </span>
           </div>
         </div>
-        <div className="timer-track">
-          <div
-            className={`timer-fill${low ? " timer-fill--low" : ""}`}
-            style={{ ["--fill" as string]: String(fill) }}
-          />
-        </div>
         <p className="sr-only" role="status">
-          {feedback ? "Đã trả lời." : `Còn khoảng ${Math.max(0, seconds)} giây.`}
+          {feedback ? "Đã trả lời." : `Đã dùng ${totalSeconds} giây cho câu này.`}
         </p>
       </section>
 
@@ -125,14 +115,11 @@ export function QuizRunner({ question, remainingMs, timeLimitMs }: Props) {
               {feedback.isCorrect ? <CheckIcon /> : <CrossIcon />}
               <div>
                 <p className="verdict__title">
-                  {feedback.isCorrect ? "Chính xác" : feedback.timedOut ? "Hết giờ" : "Chưa đúng"}
+                  {feedback.isCorrect ? "Chính xác" : feedback.skipped ? "Đã bỏ qua" : "Chưa đúng"}
                 </p>
-                <p className="verdict__points num">
-                  {feedback.isCorrect ? `+${feedback.score} điểm` : "0 điểm"}
-                  {feedback.correctText && !feedback.isCorrect
-                    ? ` · đáp án đúng: ${feedback.correctText}`
-                    : ""}
-                </p>
+                {feedback.correctText && !feedback.isCorrect ? (
+                  <p className="verdict__points">Đáp án đúng: {feedback.correctText}</p>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -241,6 +228,22 @@ export function QuizRunner({ question, remainingMs, timeLimitMs }: Props) {
                 Xác nhận {picked.length > 0 ? `(${picked.length} đáp án)` : ""}
               </button>
               <p className="field__hint">Câu này có nhiều đáp án đúng. Chọn hết rồi xác nhận.</p>
+            </div>
+          ) : null}
+
+          {!feedback ? (
+            <div style={{ marginTop: "var(--space-lg)" }}>
+              {/* Không còn hạn giờ nên phải có lối thoát cho câu bí, nếu không thí sinh
+                  ngồi lỳ giữa sự kiện mà đồng hồ vẫn chạy. Bỏ qua = tính sai. */}
+              <button
+                className="btn btn--ghost"
+                type="button"
+                disabled={locked}
+                onClick={() => send({ kind: "skip" })}
+              >
+                Bỏ qua câu này
+              </button>
+              <p className="field__hint">Bỏ qua sẽ tính là trả lời sai và chuyển sang câu sau.</p>
             </div>
           ) : null}
 

@@ -11,8 +11,6 @@ export type Question = {
   options: string[] | null;
   /** single: [index] · multi: [i,j] · boolean: [true|false] · text: ["đáp án", "biến thể"] */
   correct: (number | boolean | string)[];
-  time_limit_s: number | null;
-  points: number | null;
   explanation: string | null;
 };
 
@@ -24,15 +22,11 @@ export type PublicQuestion = {
   image_url: string | null;
   /** đã trộn theo thứ tự riêng của thí sinh */
   options: string[] | null;
-  time_limit_s: number;
   index: number;
   total: number;
 };
 
 export type Settings = {
-  default_time_limit_s: number;
-  default_points: number;
-  speed_bonus: boolean;
   show_feedback: boolean;
   multi_all_or_nothing: boolean;
   /** Số câu rút ngẫu nhiên từ bộ đề cho mỗi lượt làm bài. 0 = lấy hết bộ đề. */
@@ -66,7 +60,6 @@ export type LeaderboardRow = {
   attempt_no: number;
   started_at: string;
   finished_at: string | null;
-  total_score: number;
   total_time_ms: number;
   answered_count: number;
   correct_count: number;
@@ -78,4 +71,4 @@ export type GivenAnswer =
   | { kind: "choice"; picked: number[] }
   | { kind: "boolean"; value: boolean }
   | { kind: "text"; value: string }
-  | { kind: "timeout" };
+  | { kind: "skip" };

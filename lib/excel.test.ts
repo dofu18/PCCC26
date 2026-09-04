@@ -29,8 +29,6 @@ const singleRow: Row = [
   "115",
   "116",
   "B",
-  20,
-  1000,
   "114 là số của Cảnh sát PCCC.",
 ];
 
@@ -52,9 +50,9 @@ describe("parseQuestionWorkbook · hợp lệ", () => {
   it("đọc được cả bốn loại câu", async () => {
     const data = await workbookFrom([
       singleRow,
-      ["multi", "Nên làm gì?", "", "Báo động", "Gọi 114", "Ngắt điện", "Mở cửa sổ", "A,B,C", "", "", ""],
-      ["boolean", "Dùng thang máy khi cháy?", "", "", "", "", "", "FALSE", 15, "", "Dùng thang bộ."],
-      ["text", "Bình bột ký hiệu?", "", "", "", "", "", "ABC|A B C", "", "", ""],
+      ["multi", "Nên làm gì?", "", "Báo động", "Gọi 114", "Ngắt điện", "Mở cửa sổ", "A,B,C", ""],
+      ["boolean", "Dùng thang máy khi cháy?", "", "", "", "", "", "FALSE", "Dùng thang bộ."],
+      ["text", "Bình bột ký hiệu?", "", "", "", "", "", "ABC|A B C", ""],
     ]);
     const { questions, errors } = await parseQuestionWorkbook(data);
 
@@ -66,8 +64,6 @@ describe("parseQuestionWorkbook · hợp lệ", () => {
       type: "single",
       options: ["113", "114", "115", "116"],
       correct: [1],
-      time_limit_s: 20,
-      points: 1000,
     });
     expect(questions[1].correct).toEqual([0, 1, 2]);
     expect(questions[2]).toMatchObject({ type: "boolean", correct: [false], options: null });
@@ -76,8 +72,8 @@ describe("parseQuestionWorkbook · hợp lệ", () => {
 
   it("chấp nhận correct dạng số và Đúng/Sai tiếng Việt", async () => {
     const data = await workbookFrom([
-      ["single", "Số?", "", "113", "114", "", "", "2", "", "", ""],
-      ["boolean", "Đúng không?", "", "", "", "", "", "Đúng", "", "", ""],
+      ["single", "Số?", "", "113", "114", "", "", "2", ""],
+      ["boolean", "Đúng không?", "", "", "", "", "", "Đúng", ""],
     ]);
     const { questions, errors } = await parseQuestionWorkbook(data);
     expect(errors).toEqual([]);
@@ -115,23 +111,21 @@ describe("parseQuestionWorkbook · báo lỗi", () => {
   it("báo lỗi theo số dòng và không nhận câu lỗi", async () => {
     const data = await workbookFrom([
       singleRow,
-      ["choice", "Loại sai", "", "a", "b", "", "", "A", "", "", ""],
-      ["single", "", "", "a", "b", "", "", "A", "", "", ""],
-      ["single", "Correct trỏ sai", "", "a", "b", "", "", "D", "", "", ""],
-      ["single", "Nhiều đáp án cho single", "", "a", "b", "", "", "A,B", "", "", ""],
-      ["boolean", "Correct không hợp lệ", "", "", "", "", "", "có lẽ", "", "", ""],
-      ["single", "Thời gian âm", "", "a", "b", "", "", "A", -5, "", ""],
+      ["choice", "Loại sai", "", "a", "b", "", "", "A", ""],
+      ["single", "", "", "a", "b", "", "", "A", ""],
+      ["single", "Correct trỏ sai", "", "a", "b", "", "", "D", ""],
+      ["single", "Nhiều đáp án cho single", "", "a", "b", "", "", "A,B", ""],
+      ["boolean", "Correct không hợp lệ", "", "", "", "", "", "có lẽ", ""],
     ]);
     const { questions, errors } = await parseQuestionWorkbook(data);
 
     expect(questions).toHaveLength(1);
-    expect(errors.map((e) => e.row)).toEqual([3, 4, 5, 6, 7, 8]);
+    expect(errors.map((e) => e.row)).toEqual([3, 4, 5, 6, 7]);
     expect(errors[0].message).toContain("type");
     expect(errors[1].message).toContain("question");
     expect(errors[2].message).toContain("không trỏ tới đáp án nào");
     expect(errors[3].message).toContain("chỉ được có 1 đáp án đúng");
     expect(errors[4].message).toContain("TRUE/FALSE");
-    expect(errors[5].message).toContain("time_limit");
   });
 
   it("thiếu cột bắt buộc thì báo một lỗi rõ ràng", async () => {
@@ -176,7 +170,6 @@ describe("buildLeaderboardWorkbook", () => {
       attempt_no: 1,
       started_at: "2026-08-31T07:20:00.000Z",
       finished_at: "2026-08-31T07:22:00.000Z",
-      total_score: 8105,
       total_time_ms: 95000,
       answered_count: 10,
       correct_count: 9,
@@ -191,7 +184,6 @@ describe("buildLeaderboardWorkbook", () => {
       attempt_no: 2,
       started_at: "2026-08-31T07:20:30.000Z",
       finished_at: null,
-      total_score: 7240,
       total_time_ms: 112000,
       answered_count: 8,
       correct_count: 8,
@@ -209,7 +201,6 @@ describe("buildLeaderboardWorkbook", () => {
         given_text: "114",
         is_correct: true,
         time_ms: 4300,
-        score: 950,
       },
     ]);
 
@@ -221,13 +212,17 @@ describe("buildLeaderboardWorkbook", () => {
       "Chi tiết trả lời",
     ]);
 
+    // Cột: Hạng · Mã số · Họ tên · Tên hiển thị · Số câu đúng · Số câu đã trả lời ·
+    //       Tổng thời gian · Thời điểm nộp  (không còn cột Điểm)
     const board = wb.getWorksheet("Bảng xếp hạng")!;
     expect(board.getRow(1).getCell(1).value).toBe("Hạng");
+    expect(board.getRow(1).values).not.toContain("Điểm");
     expect(board.getRow(2).getCell(3).value).toBe("Lê Thu Hà");
-    expect(board.getRow(2).getCell(5).value).toBe(8105);
-    expect(board.getRow(3).getCell(9).value).toBe("chưa nộp");
+    expect(board.getRow(2).getCell(5).value).toBe(9);
+    expect(board.getRow(3).getCell(8).value).toBe("chưa nộp");
 
     const detail = wb.getWorksheet("Chi tiết trả lời")!;
+    expect(detail.getRow(1).values).not.toContain("Điểm");
     expect(detail.getRow(2).getCell(6).value).toBe("Đúng");
   });
 });

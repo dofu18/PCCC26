@@ -49,8 +49,6 @@ beforeAll(async () => {
       image_url: null,
       options: ["A", "B", "C", "D"],
       correct: [i % 4],
-      time_limit_s: 20,
-      points: 1000,
       explanation: null,
     });
   }

@@ -368,17 +368,10 @@ p { margin: 0; }
 .qbar__timer {
   font-family: var(--font-display);
   font-size: var(--text-2xl);
-  color: var(--color-accent);
+  /* Đếm lên, không phải đếm ngược — dùng màu mực chứ không phải đỏ cảnh báo. */
+  color: var(--color-ink-2);
   font-variant-numeric: tabular-nums;
   line-height: 1;
-}
-.timer-track { height: 10px; background: var(--color-paper-3); overflow: hidden; }
-.timer-fill {
-  height: 100%;
-  background: var(--color-accent);
-  transform-origin: left center;
-  transform: scaleX(var(--fill, 1));
-  transition: transform 200ms linear;
 }
 .qtext {
   font-family: var(--font-body);
@@ -443,6 +436,33 @@ p { margin: 0; }
 .opt--no .opt__key { background: var(--color-no-2); color: var(--color-no-ink); }
 .opt--no .opt__text { text-decoration: line-through; text-decoration-thickness: 2px; }
 
+/* ── QR ở góc màn chiếu ─────────────────────────────────── */
+.stage-qr {
+  position: fixed;
+  right: var(--space-lg);
+  bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  border: var(--rule-slab) solid var(--color-ink);
+}
+.stage-qr img { display: block; width: 148px; height: 148px; }
+.stage-qr p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.stage-qr .num { font-size: var(--text-base); letter-spacing: 0.02em; }
+/* Máy chiếu luôn là màn rộng; màn hẹp thì QR chiếm chỗ nên giấu đi. */
+@media (max-width: 60rem) {
+  .stage-qr { display: none; }
+}
+
 /* ── Đáp án đã chọn / đáp án đúng (xem lại bài làm, bảng admin) ── */
 .ans {
   display: grid;
@@ -503,6 +523,11 @@ p { margin: 0; }
   font-variant-numeric: tabular-nums;
   color: var(--color-accent);
 }
+/* "/8" nhỏ hơn con số câu đúng để mắt bắt vào số trước. */
+.score__of {
+  font-size: 0.42em;
+  color: var(--color-ink-2);
+}
 .facts {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -544,9 +569,22 @@ p { margin: 0; }
   font-variant-numeric: tabular-nums;
 }
 .row__who { min-width: 0; }
-.row__code { font-weight: 800; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
-.row__name { font-size: var(--text-sm); color: var(--color-ink-2); }
-.row__pts { font-weight: 800; font-size: var(--text-md); font-variant-numeric: tabular-nums; }
+.row__person { font-weight: 800; }
+.row__code {
+  font-size: var(--text-sm);
+  letter-spacing: 0.06em;
+  color: var(--color-ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.row__pts {
+  font-weight: 800;
+  font-size: var(--text-md);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  line-height: 1.25;
+}
+.row__unit { font-weight: 400; font-size: var(--text-sm); color: var(--color-ink-2); }
+.row__time { font-weight: 400; font-size: var(--text-sm); color: var(--color-ink-2); }
 
 /* Màn chiếu — chữ to, đọc từ xa */
 .stage .row {
@@ -560,8 +598,10 @@ p { margin: 0; }
 }
 .stage .row--lead .row__rank { color: var(--color-gold); }
 .stage .row__rank { font-size: var(--text-2xl); }
-.stage .row__code { font-size: var(--text-md); }
-.stage .row__name { color: var(--color-on-ink-2); }
+.stage .row__person { font-size: var(--text-md); }
+.stage .row__code { color: var(--color-on-ink-2); }
+.stage .row__unit,
+.stage .row__time { color: var(--color-on-ink-2); }
 .stage .row__pts  { font-size: var(--text-xl); }
 .live {
   display: inline-flex;
@@ -762,7 +802,6 @@ dialog.dialog--wide { width: min(52rem, calc(100% - 2rem)); }
   60% { transform: translateX(-3px); }
   80% { transform: translateX(2px); }
 }
-@keyframes tick  { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.16); } }
 @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
 @keyframes sweep { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
@@ -853,12 +892,6 @@ html { scroll-behavior: smooth; }
 .opt--ok { animation: pop 340ms var(--ease-out); }
 .opt--no { animation: nudge 380ms var(--ease-in-out); }
 
-/* ── Đồng hồ: 5 giây cuối thì nhịp mạnh lên ── */
-.qbar__timer { display: inline-block; transition: color var(--dur-short) var(--ease-out); }
-.qbar__timer--low { animation: tick 800ms var(--ease-in-out) infinite; }
-.timer-fill { transition: transform 200ms linear, background-color var(--dur-long) var(--ease-out); }
-.timer-fill--low { background: var(--color-accent-hi); }
-.qbar__timer--low { color: var(--color-accent-hi); }
 .qfig { animation: rise var(--dur-long) var(--ease-out) 60ms backwards; }
 
 /* ── Feedback slab: đóng sập xuống ── */
@@ -889,7 +922,6 @@ dialog::backdrop { animation: fade var(--dur-short) var(--ease-out) backwards; }
     animation-iteration-count: 1 !important;
     transition-duration: 150ms !important;
   }
-  .timer-fill { transition-duration: 200ms !important; } /* functional: vẫn chạy */
   /* Bỏ hẳn phần dịch chuyển; giữ fade để vẫn thấy có thay đổi trạng thái. */
   .page-in > *, .stagger > *, .verdict, .explain, .score, .anim-slam, dialog {
     animation-name: fade !important;
@@ -897,7 +929,7 @@ dialog::backdrop { animation: fade var(--dur-short) var(--ease-out) backwards; }
   .hl { animation: none; }
   .nav { border-bottom-color: currentColor; }
   .nav::after { animation: none; display: none; }
-  .live__dot, .qbar__timer--low { animation: none !important; }
+  .live__dot { animation: none !important; }
   .opt--ok, .opt--no, .opt--picked, .row__pts--bump { animation: none !important; }
   @media (hover: hover) and (pointer: fine) {
     .btn:not([disabled]):not([aria-disabled="true"]):hover,

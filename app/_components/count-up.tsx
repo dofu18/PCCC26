@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { formatScore } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
 
 /**
  * Đếm số điểm từ 0 lên giá trị thật.
@@ -26,26 +26,26 @@ export function CountUp({
 
     let frame = 0;
     const start = performance.now();
-    el.textContent = formatScore(0);
+    el.textContent = formatNumber(0);
 
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / durationMs);
       // ease-out mạnh: chạy nhanh lúc đầu, dừng dứt khoát
       const eased = 1 - Math.pow(1 - t, 3);
-      el.textContent = formatScore(Math.round(value * eased));
+      el.textContent = formatNumber(Math.round(value * eased));
       if (t < 1) frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
 
     return () => {
       cancelAnimationFrame(frame);
-      el.textContent = formatScore(value);
+      el.textContent = formatNumber(value);
     };
   }, [value, durationMs]);
 
   return (
     <span ref={ref} className={className}>
-      {formatScore(value)}
+      {formatNumber(value)}
     </span>
   );
 }

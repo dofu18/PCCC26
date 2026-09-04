@@ -115,7 +115,6 @@ export default async function AdminSessionPage() {
                 code: row.code,
                 display_name: row.display_name,
                 full_name: row.full_name,
-                total_score: row.total_score,
                 total_time_ms: row.total_time_ms,
                 correct_count: row.correct_count,
                 answered_count: row.answered_count,

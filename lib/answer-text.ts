@@ -1,7 +1,7 @@
 import type { Question } from "./types";
 
-/** Chữ hiển thị khi thí sinh không kịp trả lời. Dùng để nhận ra trường hợp này ở UI. */
-export const TIMED_OUT = "hết giờ, không trả lời";
+/** Chữ hiển thị khi thí sinh bỏ qua câu. Dùng để nhận ra trường hợp này ở UI. */
+export const NOT_ANSWERED = "bỏ qua, không trả lời";
 
 /**
  * Diễn giải đáp án thí sinh đã chọn thành chữ đọc được.
@@ -10,7 +10,7 @@ export const TIMED_OUT = "hết giờ, không trả lời";
  * Dùng chung cho trang kết quả của thí sinh, bảng bài làm ở admin và file Excel.
  */
 export function describeGiven(given: unknown, options: string[] | null): string {
-  if (given === null || given === undefined) return TIMED_OUT;
+  if (given === null || given === undefined) return NOT_ANSWERED;
   if (typeof given !== "object") return String(given);
 
   const value = given as { kind?: string; picked?: number[]; value?: unknown };
@@ -21,8 +21,8 @@ export function describeGiven(given: unknown, options: string[] | null): string 
       return value.value ? "Đúng" : "Sai";
     case "text":
       return String(value.value ?? "");
-    case "timeout":
-      return TIMED_OUT;
+    case "skip":
+      return NOT_ANSWERED;
     default:
       return JSON.stringify(given);
   }
