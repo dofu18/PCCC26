@@ -35,6 +35,8 @@ export type Settings = {
   speed_bonus: boolean;
   show_feedback: boolean;
   multi_all_or_nothing: boolean;
+  /** Số câu rút ngẫu nhiên từ bộ đề cho mỗi lượt làm bài. 0 = lấy hết bộ đề. */
+  questions_per_attempt: number;
 };
 
 export type SessionRow = {

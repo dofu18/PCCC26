@@ -7,6 +7,10 @@
  * display: Anton · body: Be Vietnam Pro · axes: light / display-condensed-bold / warm
  * audience: sinh viên FPT · use: trả lời quiz PCCC + xem xếp hạng · tone: poster tuyên truyền hiện đại
  * studied: no · context: explicit
+ * brand: logo BTC Phoenix (public/phoenix26.png, alpha) đặt ở nav mọi trang
+ * palette v2 (2026-09-04): đỏ giữ nguyên — hue 30 đã trùng lửa của logo (logo đo được
+ *   oklch(~55-60% 0.21 30)). Bổ sung tầng vàng kim oklch(82% 0.138 76) lấy từ lõi phượng
+ *   hoàng + viền huy hiệu; giao cho hạng nhất để đỏ giữ đúng nghĩa CTA/khẩn cấp.
  */
 
 :root {
@@ -28,6 +32,13 @@
   --color-focus:      oklch(52.0% 0.22 30);
   --color-accent-hi:  oklch(66.0% 0.19 32);
   --color-scrim:      oklch(19.0% 0.014 40 / 0.62);
+
+  /* ---- Vàng kim: lấy từ lõi lửa + viền huy hiệu của logo BTC.
+         Dành riêng cho hạng nhất, để đỏ giữ đúng nghĩa CTA/khẩn cấp.
+         --color-gold sáng 82% nên chỉ đọc được trên nền mực (10.4:1);
+         trên nền giấy phải dùng --color-gold-deep (4.9:1). ---- */
+  --color-gold:       oklch(82.0% 0.138 76);
+  --color-gold-deep:  oklch(50.0% 0.12 76);
 
   /* ---- Semantic: đúng = xanh, sai = mực đậm (không dùng đỏ) ---- */
   --color-ok:         oklch(46.0% 0.13 150);
@@ -152,9 +163,23 @@ p { margin: 0; }
   padding-block: var(--space-sm);
   border-bottom: var(--rule-slab) solid currentColor;
 }
+.nav__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  /* Thương hiệu không co: phần bị cắt khi hẹp là nav__meta. */
+  flex: 0 0 auto;
+}
+/* Huy hiệu nhiều chi tiết: dưới 48px là mất hình, 64px mới đọc được cánh và dải băng. */
+.nav__logo {
+  height: 64px;
+  width: auto;
+  flex: 0 0 auto;
+}
 .nav__mark {
   font-family: var(--font-display);
-  font-size: var(--text-lg);
+  /* Đi kèm huy hiệu 64px nên wordmark phải lên theo, không thì nhìn như chú thích. */
+  font-size: var(--text-xl);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   line-height: 1;
@@ -166,10 +191,20 @@ p { margin: 0; }
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-muted);
+  /* Tên lượt do BTC tự đặt nên có thể dài. Cắt bằng … chứ không đẩy tràn ngang
+     — nav giờ có thêm huy hiệu nên chỗ trống trên máy 320px rất hẹp. */
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
   line-height: 1;
 }
 .band--ink .nav__meta { color: var(--color-on-ink-2); }
+
+@media (max-width: 30rem) {
+  .nav__logo { height: 48px; }
+  .nav__mark { font-size: var(--text-lg); }
+}
 
 /* ── Type helpers ───────────────────────────────────────── */
 .display   { font-size: var(--text-display); }
@@ -408,6 +443,28 @@ p { margin: 0; }
 .opt--no .opt__key { background: var(--color-no-2); color: var(--color-no-ink); }
 .opt--no .opt__text { text-decoration: line-through; text-decoration-thickness: 2px; }
 
+/* ── Đáp án đã chọn / đáp án đúng (xem lại bài làm, bảng admin) ── */
+.ans {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2xs) var(--space-sm);
+  margin: var(--space-xs) 0 0;
+  font-size: var(--text-base);
+}
+.ans dt {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-ink-2);
+  white-space: nowrap;
+}
+.ans dd { margin: 0; font-weight: 600; }
+/* Màu chỉ là lớp phụ — nhãn "Bạn trả lời"/"Đáp án đúng" và cột "Kết quả" ở bảng admin
+   mới là thứ mang nghĩa, để không phụ thuộc vào việc phân biệt được màu. */
+.is-ok { color: var(--color-ok); font-weight: 600; }
+.is-no { text-decoration: line-through; text-decoration-thickness: 2px; }
+.is-empty { font-style: italic; color: var(--color-ink-2); }
+
 /* ── Feedback slab ──────────────────────────────────────── */
 .verdict {
   display: grid;
@@ -476,10 +533,10 @@ p { margin: 0; }
   background: var(--color-paper-2);
 }
 .row--lead {
-  border-left: var(--rule-heavy) solid var(--color-accent);
+  border-left: var(--rule-heavy) solid var(--color-gold-deep);
   padding-left: calc(var(--space-md) - var(--rule-heavy));
 }
-.row--lead .row__rank { color: var(--color-accent); }
+.row--lead .row__rank { color: var(--color-gold-deep); }
 .row--self { outline: var(--rule-slab) solid var(--color-ink); outline-offset: -2px; }
 .row__rank {
   font-family: var(--font-display);
@@ -499,9 +556,9 @@ p { margin: 0; }
 }
 .stage .row--lead {
   background: var(--color-ink-raised);
-  border-left: var(--rule-heavy) solid var(--color-accent);
+  border-left: var(--rule-heavy) solid var(--color-gold);
 }
-.stage .row--lead .row__rank { color: var(--color-accent-hi); }
+.stage .row--lead .row__rank { color: var(--color-gold); }
 .stage .row__rank { font-size: var(--text-2xl); }
 .stage .row__code { font-size: var(--text-md); }
 .stage .row__name { color: var(--color-on-ink-2); }

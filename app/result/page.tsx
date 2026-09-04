@@ -4,6 +4,7 @@ import { ErrorNotice, Footer, Nav, SetupNotice } from "../_components/chrome";
 import { CountUp } from "../_components/count-up";
 import { LiveLeaderboard } from "../_components/leaderboard";
 import { readParticipantCookie } from "@/lib/auth";
+import { TIMED_OUT } from "@/lib/answer-text";
 import { formatDuration, formatScore } from "@/lib/format";
 import { getLeaderboard, getParticipant, getParticipantSummary, getReview } from "@/lib/quiz";
 import { isConfigured } from "@/lib/supabase";
@@ -132,6 +133,26 @@ export default async function ResultPage() {
                       {formatScore(row.score)} điểm · {formatDuration(row.time_ms)}
                     </p>
                     <p style={{ fontWeight: 600, marginTop: "var(--space-2xs)" }}>{row.content}</p>
+                    <dl className="ans">
+                      <dt>Bạn trả lời</dt>
+                      <dd
+                        className={
+                          row.given_text === TIMED_OUT
+                            ? "is-empty"
+                            : row.is_correct
+                              ? "is-ok"
+                              : "is-no"
+                        }
+                      >
+                        {row.given_text}
+                      </dd>
+                      {row.is_correct ? null : (
+                        <>
+                          <dt>Đáp án đúng</dt>
+                          <dd className="is-ok">{row.correct_text}</dd>
+                        </>
+                      )}
+                    </dl>
                     {row.explanation ? (
                       <p style={{ color: "var(--color-ink-2)", marginTop: "var(--space-xs)" }}>
                         {row.explanation}

@@ -7,7 +7,7 @@ import {
 } from "./_components/admin-forms";
 import { listQuestionSets, listSessions } from "@/lib/admin-data";
 import { formatTime } from "@/lib/format";
-import { getLeaderboard } from "@/lib/quiz";
+import { getLeaderboard, getSettings } from "@/lib/quiz";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,11 @@ function suggestNextName(current: string): string {
 }
 
 export default async function AdminSessionPage() {
-  const [sessions, sets] = await Promise.all([listSessions(), listQuestionSets()]);
+  const [sessions, sets, settings] = await Promise.all([
+    listSessions(),
+    listQuestionSets(),
+    getSettings(),
+  ]);
   const active = sessions.find((s) => s.status === "active");
   const board = active ? await getLeaderboard(active.id, 50) : [];
 
@@ -38,6 +42,12 @@ export default async function AdminSessionPage() {
                 <dl className="kv">
                   <dt>Bộ câu hỏi</dt>
                   <dd>{active.set_name ?? "—"}</dd>
+                  <dt>Số câu mỗi thí sinh</dt>
+                  <dd className="num">
+                    {active.settings?.questions_per_attempt
+                      ? `${active.settings.questions_per_attempt} câu rút ngẫu nhiên`
+                      : "hết bộ đề"}
+                  </dd>
                   <dt>Thí sinh đã vào</dt>
                   <dd className="num">{active.participant_count}</dd>
                   <dt>Đã nộp bài</dt>
@@ -48,6 +58,9 @@ export default async function AdminSessionPage() {
               </div>
 
               <div className="btn-row" style={{ marginBottom: "var(--space-xl)" }}>
+                <Link className="btn btn--ghost" href={`/admin/session/${active.id}`}>
+                  Xem bài làm chi tiết
+                </Link>
                 <a className="btn btn--ghost" href={`/admin/export/${active.id}`}>
                   Xuất Excel
                 </a>
@@ -75,7 +88,14 @@ export default async function AdminSessionPage() {
               lượt.
             </p>
           ) : (
-            <OpenSessionForm sets={sets.map((s) => ({ id: s.id, name: s.name }))} />
+            <OpenSessionForm
+              sets={sets.map((s) => ({
+                id: s.id,
+                name: s.name,
+                question_count: s.question_count,
+              }))}
+              questionsPerAttempt={settings.questions_per_attempt}
+            />
           )}
         </div>
       </section>

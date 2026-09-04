@@ -4,6 +4,10 @@
  * display: Anton · body: Be Vietnam Pro · axes: light / display-condensed-bold / warm
  * audience: sinh viên FPT · use: trả lời quiz PCCC + xem xếp hạng · tone: poster tuyên truyền hiện đại
  * enrichment: E-B hand-built SVG (bình chữa cháy phẳng) · studied: no · context: explicit
+ * brand: logo BTC Phoenix (public/phoenix26.png, alpha) đặt ở nav mọi trang
+ * palette v2 (2026-09-04): đỏ giữ nguyên — hue 30 đã trùng lửa của logo (logo đo được
+ *   oklch(~55-60% 0.21 30)). Bổ sung tầng vàng kim oklch(82% 0.138 76) lấy từ lõi phượng
+ *   hoàng + viền huy hiệu; giao cho hạng nhất để đỏ giữ đúng nghĩa CTA/khẩn cấp.
  */
 
 :root {
@@ -25,6 +29,11 @@
   --color-focus:      oklch(52.0% 0.22 30);
   --color-accent-hi:  oklch(66.0% 0.19 32);   /* accent đọc được trên nền mực */
   --color-scrim:      oklch(19.0% 0.014 40 / 0.62);
+
+  /* ---- Vàng kim: lấy từ lõi lửa + viền huy hiệu của logo BTC (Phoenix).
+         Dành riêng cho hạng nhất, để đỏ giữ đúng nghĩa CTA/khẩn cấp. ---- */
+  --color-gold:       oklch(82.0% 0.138 76);  /* chỉ trên nền mực — 10.4:1 */
+  --color-gold-deep:  oklch(50.0% 0.12 76);   /* trên nền giấy — 4.9:1 */
 
   /* ---- Semantic: đúng = xanh, sai = mực đậm (không dùng đỏ) ---- */
   --color-ok:         oklch(46.0% 0.13 150);

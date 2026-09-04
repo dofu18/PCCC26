@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import {
   AddQuestionForm,
   DeleteQuestionButton,
+  EditQuestionButton,
   ImportForm,
 } from "../../_components/admin-forms";
 import { getQuestionSetName, listQuestions } from "@/lib/admin-data";
+import { describeCorrect } from "@/lib/answer-text";
 import type { Question } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -16,20 +18,6 @@ const TYPE_LABEL: Record<Question["type"], string> = {
   boolean: "đúng/sai",
   text: "điền chữ",
 };
-
-function correctText(question: Question): string {
-  switch (question.type) {
-    case "single":
-    case "multi":
-      return question.correct
-        .map((c) => question.options?.[Number(c)] ?? `#${Number(c) + 1}`)
-        .join(" · ");
-    case "boolean":
-      return Boolean(question.correct[0]) ? "Đúng" : "Sai";
-    case "text":
-      return question.correct.map(String).join(" | ");
-  }
-}
 
 export default async function QuestionSetPage({ params }: PageProps<"/admin/questions/[setId]">) {
   const { setId } = await params;
@@ -89,12 +77,15 @@ export default async function QuestionSetPage({ params }: PageProps<"/admin/ques
                         <span className="tag">{TYPE_LABEL[question.type]}</span>
                       </td>
                       <td>{question.content}</td>
-                      <td>{correctText(question)}</td>
+                      <td>{describeCorrect(question)}</td>
                       <td className="num">{question.time_limit_s ?? "—"}</td>
                       <td className="num">{question.points ?? "—"}</td>
                       <td>{question.image_url ? "có" : "—"}</td>
                       <td>
-                        <DeleteQuestionButton questionId={question.id} setId={setId} />
+                        <div className="btn-row">
+                          <EditQuestionButton setId={setId} question={question} />
+                          <DeleteQuestionButton questionId={question.id} setId={setId} />
+                        </div>
                       </td>
                     </tr>
                   ))}

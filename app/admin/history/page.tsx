@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DeleteSessionButton } from "../_components/admin-forms";
 import { listSessions } from "@/lib/admin-data";
 import { formatTime } from "@/lib/format";
@@ -35,6 +36,9 @@ export default async function HistoryPage() {
                   </dd>
                 </dl>
                 <div className="btn-row" style={{ marginTop: "var(--space-sm)" }}>
+                  <Link className="btn btn--ghost" href={`/admin/session/${session.id}`}>
+                    Xem bài làm chi tiết
+                  </Link>
                   <a className="btn btn--ghost" href={`/admin/export/${session.id}`}>
                     Xuất Excel
                   </a>

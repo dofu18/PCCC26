@@ -19,6 +19,7 @@ import {
   listSessions,
   openSession,
   resetSession,
+  updateSettings,
 } from "@/lib/admin-data";
 import { buildLeaderboardWorkbook, buildQuestionTemplate, parseQuestionWorkbook } from "@/lib/excel";
 import {
@@ -95,6 +96,10 @@ beforeAll(async () => {
     points: 1000,
     explanation: null,
   });
+
+  // Bộ test này giả định thí sinh làm HẾT bộ đề, nên chốt số câu mỗi lượt về 0
+  // thay vì phụ thuộc vào cấu hình đang có trong DB.
+  await updateSettings({ questions_per_attempt: 0 });
 
   sessionId = await openSession(`${TAG} lượt 1`, setId);
 }, 60_000);

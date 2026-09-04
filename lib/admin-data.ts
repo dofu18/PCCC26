@@ -1,4 +1,5 @@
 import "server-only";
+import { describeCorrect, describeGiven } from "./answer-text";
 import type { AnswerDetail, ParsedQuestion } from "./excel";
 import { getSettings } from "./quiz";
 import { db } from "./supabase";
@@ -99,6 +100,17 @@ export async function addQuestion(setId: string, input: QuestionInput): Promise<
 export async function updateQuestion(id: string, input: Partial<QuestionInput>): Promise<void> {
   const { error } = await db().from("questions").update(input).eq("id", id);
   if (error) throw new Error(`Không sửa được câu hỏi: ${error.message}`);
+}
+
+/** Bộ đề có đang được một lượt thi đang mở dùng không. */
+export async function isSetInActiveSession(setId: string): Promise<boolean> {
+  const { count, error } = await db()
+    .from("sessions")
+    .select("id", { count: "exact", head: true })
+    .eq("question_set_id", setId)
+    .eq("status", "active");
+  if (error) throw new Error(`Không kiểm tra được lượt đang mở: ${error.message}`);
+  return (count ?? 0) > 0;
 }
 
 export async function deleteQuestion(id: string): Promise<void> {
@@ -268,25 +280,101 @@ export async function answerDetails(sessionId: string): Promise<AnswerDetail[]> 
     .sort((a, b) => a.code.localeCompare(b.code) || a.order_index - b.order_index);
 }
 
-function describeGiven(given: unknown, options: string[] | null): string {
-  if (given === null || given === undefined) return "hết giờ, không trả lời";
-  if (typeof given !== "object") return String(given);
+/* ── Bài làm chi tiết của cả lượt ─────────────────────────── */
 
-  const value = given as { kind?: string; picked?: number[]; value?: unknown };
-  switch (value.kind) {
-    case "choice":
-      return (value.picked ?? [])
-        .map((i) => options?.[i] ?? `đáp án ${i + 1}`)
-        .join(" · ");
-    case "boolean":
-      return value.value ? "Đúng" : "Sai";
-    case "text":
-      return String(value.value ?? "");
-    case "timeout":
-      return "hết giờ, không trả lời";
-    default:
-      return JSON.stringify(given);
-  }
+export type ParticipantAnswer = {
+  order_index: number;
+  question: string;
+  question_type: Question["type"];
+  given_text: string;
+  correct_text: string;
+  is_correct: boolean;
+  time_ms: number;
+  score: number;
+};
+
+export type ParticipantSheet = {
+  participant_id: string;
+  code: string;
+  full_name: string;
+  display_name: string;
+  attempt_no: number;
+  started_at: string;
+  finished_at: string | null;
+  total_score: number;
+  total_time_ms: number;
+  correct_count: number;
+  answers: ParticipantAnswer[];
+};
+
+/**
+ * Toàn bộ dữ liệu một lượt gom theo từng thí sinh: thông tin người chơi, từng câu hỏi
+ * đã nhận, đáp án đã chọn, đúng/sai, thời gian và điểm. Dùng cho trang xem chi tiết ở admin.
+ * Sắp theo điểm giảm dần để khớp thứ tự bảng xếp hạng.
+ */
+export async function sessionSheet(sessionId: string): Promise<ParticipantSheet[]> {
+  const { data, error } = await db()
+    .from("participants")
+    .select(
+      "id, code, full_name, display_name, attempt_no, started_at, finished_at, answers(order_index, given, is_correct, time_ms, score, questions(content, type, options, correct))",
+    )
+    .eq("session_id", sessionId);
+  if (error) throw new Error(`Không đọc được bài làm của lượt: ${error.message}`);
+
+  type JoinedAnswer = {
+    order_index: number;
+    given: unknown;
+    is_correct: boolean;
+    time_ms: number;
+    score: number;
+    questions: Pick<Question, "content" | "type" | "options" | "correct"> | null;
+  };
+  type Joined = {
+    id: string;
+    code: string;
+    full_name: string;
+    display_name: string;
+    attempt_no: number;
+    started_at: string;
+    finished_at: string | null;
+    answers: JoinedAnswer[] | null;
+  };
+
+  return ((data ?? []) as unknown as Joined[])
+    .map((row) => {
+      const answers = [...(row.answers ?? [])]
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((answer) => ({
+          order_index: answer.order_index,
+          question: answer.questions?.content ?? "(câu hỏi đã bị xoá)",
+          question_type: answer.questions?.type ?? "single",
+          given_text: describeGiven(answer.given, answer.questions?.options ?? null),
+          correct_text: answer.questions ? describeCorrect(answer.questions) : "—",
+          is_correct: answer.is_correct,
+          time_ms: answer.time_ms,
+          score: answer.score,
+        }));
+
+      return {
+        participant_id: row.id,
+        code: row.code,
+        full_name: row.full_name,
+        display_name: row.display_name,
+        attempt_no: row.attempt_no,
+        started_at: row.started_at,
+        finished_at: row.finished_at,
+        total_score: answers.reduce((sum, a) => sum + a.score, 0),
+        total_time_ms: answers.reduce((sum, a) => sum + a.time_ms, 0),
+        correct_count: answers.filter((a) => a.is_correct).length,
+        answers,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.total_score - a.total_score ||
+        a.total_time_ms - b.total_time_ms ||
+        a.code.localeCompare(b.code),
+    );
 }
 
 export async function leaderboardForExport(sessionId: string): Promise<LeaderboardRow[]> {

@@ -72,7 +72,7 @@ người nhập lại không làm loãng bảng xếp hạng.
 | `app/display/page.tsx` | Màn hình chiếu: top 10 chữ lớn, tự cập nhật |
 | `app/admin/page.tsx` | Cổng mật khẩu → dashboard |
 | `app/admin/questions/*` | CRUD câu hỏi thủ công + upload ảnh URL + import Excel (preview trước khi lưu) |
-| `app/admin/session/*` | Mở/đóng session, leaderboard live, **Reset session (pop-up confirm 2 bước)**, xuất Excel |
+| `app/admin/session/[sessionId]` | Bài làm chi tiết của cả lượt: từng thí sinh, từng câu, đáp án đã chọn |
 | `app/admin/history/*` | Danh sách session cũ, xem & xuất lại Excel |
 | `app/admin/settings/*` | Timer, điểm, luật chấm, bật/tắt feedback |
 | `lib/scoring.ts` | Công thức điểm + chấm từng dạng câu (dùng chung cho mọi route) |
@@ -133,13 +133,28 @@ mỗi bước là một checkbox, t tick `[x]` ngay sau khi làm xong nên bro m
       nhấc nút có bóng khối, đồng hồ nhịp 5s cuối, slab feedback đóng sập), `CountUp` cho điểm ở
       `/result`, và `motion` (framer-motion) lo leaderboard đổi hạng ở `/display` + `/result`.
       Tôn trọng `prefers-reduced-motion`.
+- [x] 9d. Vá 2 gap từ đợt rà soát (2026-09-04):
+      **(a)** rút ngẫu nhiên N câu từ ngân hàng cho mỗi lượt — setting `questions_per_attempt`
+      (`supabase/migrations/0002_questions_per_attempt.sql`, `buildQuestionOrder(…, take)`),
+      0/để trống = lấy hết bộ đề như cũ; số câu lấy từ snapshot settings của lượt nên đổi cấu hình
+      giữa chừng không ảnh hưởng lượt đang chạy.
+      **(b)** sửa câu hỏi trong admin — `editQuestionAction` + `QuestionForm` dùng chung cho
+      thêm/sửa, mở bằng dialog từ bảng câu hỏi; chặn sửa khi bộ đề đang được lượt mở dùng.
+      Đã chạy `0002_...sql` trên Supabase và verify e2e: `test/subset-edit.e2e.test.ts` (7 test).
+- [x] 9e. Xem lại dữ liệu đã lưu (2026-09-04):
+      **(a)** `/admin/session/[sessionId]` — gom toàn bộ dữ liệu một lượt theo từng thí sinh:
+      thông tin người chơi, từng câu đã nhận, đáp án đã chọn, đáp án đúng, đúng/sai, thời gian,
+      điểm; xếp theo điểm giảm dần. Vào từ `/admin` và `/admin/history`.
+      **(b)** Trang `/result` của thí sinh hiện thêm "Bạn trả lời", và "Đáp án đúng" ở câu sai.
+      Phần diễn giải đáp án gom về `lib/answer-text.ts`, dùng chung cho trang kết quả, trang
+      admin, bảng câu hỏi và file Excel (trước đó mỗi chỗ có một bản riêng).
 - [ ] 9b. Deploy Vercel (cần account của BTC) + dựng QR cho thí sinh
 
 ## Verification — đã chạy 2026-08-31
 | Hạng mục | Kết quả |
 |---|---|
-| `npm test` | 55 unit test pass (chấm điểm, trộn đề, Excel) |
-| `npm run test:e2e` | 28 integration test pass trên Supabase thật |
+| `npm test` | 61 unit test pass (chấm điểm, trộn đề, rút đề, Excel) |
+| `npm run test:e2e` | 41 integration test pass trên Supabase thật (28 cũ + 7 rút đề/sửa câu + 6 xem lại bài làm) |
 | `npm run build` | pass, typecheck sạch |
 | `npx eslint .` | 0 lỗi |
 | Đáp án rò xuống client | **không** — payload chỉ có `options` đã trộn, không có `correct`/`explanation` |

@@ -1,4 +1,5 @@
 import "server-only";
+import { describeCorrect, describeGiven } from "./answer-text";
 import {
   clampTimeUsed,
   grade,
@@ -52,7 +53,9 @@ export function displayNameFor(code: string, fullName: string): string {
 export async function getSettings(): Promise<Settings> {
   const { data, error } = await db()
     .from("app_settings")
-    .select("default_time_limit_s, default_points, speed_bonus, show_feedback, multi_all_or_nothing")
+    .select(
+      "default_time_limit_s, default_points, speed_bonus, show_feedback, multi_all_or_nothing, questions_per_attempt",
+    )
     .eq("id", 1)
     .single();
   if (error) throw new Error(`Không đọc được cấu hình: ${error.message}`);
@@ -140,7 +143,9 @@ export async function joinSession(input: {
   // hai người khác nhau ra thứ tự khác nhau.
   const attemptNo = attempts + 1;
   const seed = `${session.id}:${code}:${attemptNo}`;
-  const order = buildQuestionOrder(questions, seed);
+  // Số câu lấy từ snapshot settings của lượt, không từ settings hiện tại: BTC đổi
+  // cấu hình giữa chừng thì các lượt đang chạy vẫn giữ nguyên số câu.
+  const order = buildQuestionOrder(questions, seed, session.settings?.questions_per_attempt ?? 0);
 
   const { data, error } = await db()
     .from("participants")
@@ -390,22 +395,29 @@ export type ReviewRow = {
   score: number;
   time_ms: number;
   explanation: string | null;
+  /** Đáp án thí sinh đã chọn, dạng chữ. */
+  given_text: string;
+  /** Đáp án đúng, dạng chữ. */
+  correct_text: string;
 };
 
 export async function getReview(participantId: string): Promise<ReviewRow[]> {
   const { data, error } = await db()
     .from("answers")
-    .select("order_index, is_correct, score, time_ms, questions(content, explanation)")
+    .select(
+      "order_index, given, is_correct, score, time_ms, questions(content, explanation, type, options, correct)",
+    )
     .eq("participant_id", participantId)
     .order("order_index", { ascending: true });
   if (error) throw new Error(`Không đọc được bài làm: ${error.message}`);
 
   type Joined = {
     order_index: number;
+    given: unknown;
     is_correct: boolean;
     score: number;
     time_ms: number;
-    questions: { content: string; explanation: string | null } | null;
+    questions: Pick<Question, "content" | "explanation" | "type" | "options" | "correct"> | null;
   };
 
   return ((data ?? []) as unknown as Joined[]).map((row) => ({
@@ -415,6 +427,8 @@ export async function getReview(participantId: string): Promise<ReviewRow[]> {
     is_correct: row.is_correct,
     score: row.score,
     time_ms: row.time_ms,
+    given_text: describeGiven(row.given, row.questions?.options ?? null),
+    correct_text: row.questions ? describeCorrect(row.questions) : "—",
   }));
 }
 

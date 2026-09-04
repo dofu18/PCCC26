@@ -9,8 +9,9 @@ liên tục cho màn hình sân khấu. Hết lượt thì xuất Excel và rese
 
 1. Vào [supabase.com](https://supabase.com) → **New project** (gói miễn phí là đủ cho 10–15 người/lượt).
 2. Mở **SQL Editor** → dán toàn bộ `supabase/migrations/0001_init.sql` → **Run**.
-3. Muốn có sẵn 8 câu mẫu để thử: dán tiếp `supabase/seed.sql` → **Run**.
-4. Lấy hai giá trị:
+3. Dán tiếp `supabase/migrations/0002_questions_per_attempt.sql` → **Run**.
+4. Muốn có sẵn 8 câu mẫu để thử: dán tiếp `supabase/seed.sql` → **Run**.
+5. Lấy hai giá trị:
    - **Project URL**: Settings → Data API → *Project URL*
    - **service_role key**: Settings → API Keys → *service_role* (khoá bí mật, có toàn quyền)
 
@@ -41,18 +42,22 @@ Mở http://localhost:3000.
 | `/result` | thí sinh | Điểm, thứ hạng, xem lại bài làm |
 | `/display` | máy chiếu | Bảng xếp hạng chữ lớn, tự cập nhật |
 | `/admin` | ban tổ chức | Mở/kết thúc/reset lượt, bảng xếp hạng, xuất Excel |
+| `/admin/session/[id]` | ban tổ chức | Bài làm chi tiết: từng thí sinh, từng câu, đáp án đã chọn, điểm |
 | `/admin/questions` | ban tổ chức | Bộ đề: nhập Excel hoặc thêm tay |
 | `/admin/history` | ban tổ chức | Các lượt đã kết thúc, xuất lại Excel |
-| `/admin/settings` | ban tổ chức | Thời gian, điểm, luật chấm |
+| `/admin/settings` | ban tổ chức | Thời gian, điểm, luật chấm, số câu mỗi lượt |
 
 ## Cách chạy một buổi sự kiện
 
 1. `/admin/questions` → tạo bộ đề → tải file mẫu → điền câu hỏi → nhập lại.
-2. `/admin/settings` → chỉnh thời gian mỗi câu và điểm nếu cần.
+2. `/admin/settings` → chỉnh thời gian mỗi câu, điểm, và **số câu mỗi lượt** nếu cần.
+   Để trống số câu thì thí sinh làm hết bộ đề; điền 10 thì mỗi người được rút ngẫu nhiên 10 câu
+   từ ngân hàng (mỗi người một tập câu khác nhau, reload không đổi đề).
 3. `/admin` → **Mở lượt thi**.
 4. Mở `/display` trên laptop nối máy chiếu.
 5. Thí sinh vào `/` (dán link hoặc dựng QR trỏ tới địa chỉ web).
-6. Xong lượt → `/admin` → **Xuất Excel** → **Reset session** (phải tick đã xuất Excel mới bấm được).
+6. Muốn soi kỹ ai trả lời gì → `/admin` → **Xem bài làm chi tiết** (lượt cũ xem ở `/admin/history`).
+7. Xong lượt → `/admin` → **Xuất Excel** → **Reset session** (phải tick đã xuất Excel mới bấm được).
 
 ## Cách tính điểm
 

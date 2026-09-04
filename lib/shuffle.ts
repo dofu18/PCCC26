@@ -28,15 +28,20 @@ export function shuffled<T>(items: readonly T[], rng: () => number): T[] {
 }
 
 /**
- * Dựng đề riêng cho một thí sinh: trộn thứ tự câu và thứ tự đáp án.
+ * Dựng đề riêng cho một thí sinh: rút `take` câu từ ngân hàng rồi trộn thứ tự câu
+ * và thứ tự đáp án. `take` <= 0 (hoặc lớn hơn số câu có) nghĩa là lấy hết bộ đề.
+ * Vì cùng seed cho ra cùng kết quả nên reload không đổi cả tập câu lẫn thứ tự.
  * Câu boolean và text không có options nên chỉ trộn thứ tự câu.
  */
 export function buildQuestionOrder(
   questions: readonly Pick<Question, "id" | "options">[],
   seed: string,
+  take = 0,
 ): OrderedQuestion[] {
   const rng = makeRng(seed);
-  return shuffled(questions, rng).map((q) => ({
+  const picked = shuffled(questions, rng);
+  const limited = take > 0 ? picked.slice(0, take) : picked;
+  return limited.map((q) => ({
     qid: q.id,
     options: q.options ? shuffled(q.options.map((_, i) => i), rng) : [],
   }));

@@ -10,10 +10,13 @@ import {
   deleteQuestionSet,
   deleteSession,
   importQuestions,
+  isSetInActiveSession,
   openSession,
   resetSession,
+  updateQuestion,
   updateSettings,
 } from "@/lib/admin-data";
+import type { QuestionInput } from "@/lib/admin-data";
 import { adminPasswordMatches, clearAdminCookie, requireAdmin, setAdminCookie } from "@/lib/auth";
 import { parseQuestionWorkbook, type RowError } from "@/lib/excel";
 import type { QuestionType } from "@/lib/types";
@@ -81,16 +84,11 @@ export async function deleteSetAction(
 
 /* ── Câu hỏi ──────────────────────────────────────────────── */
 
-export async function addQuestionAction(
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  await requireAdmin();
-  const setId = String(formData.get("setId"));
+/** Đọc form câu hỏi (dùng chung cho thêm mới và sửa). Ném lỗi nếu dữ liệu không hợp lệ. */
+function readQuestionForm(formData: FormData): QuestionInput {
   const type = String(formData.get("type")) as QuestionType;
   const content = String(formData.get("content") ?? "").trim();
-
-  if (!content) return { status: "error", message: "Nhập nội dung câu hỏi." };
+  if (!content) throw new Error("Nhập nội dung câu hỏi.");
 
   const options = ["a", "b", "c", "d", "e", "f"]
     .map((key) => String(formData.get(`option_${key}`) ?? "").trim())
@@ -98,45 +96,73 @@ export async function addQuestionAction(
 
   let correct: (number | boolean | string)[] = [];
 
-  try {
-    if (type === "single" || type === "multi") {
-      if (options.length < 2) throw new Error("Câu trắc nghiệm cần ít nhất 2 đáp án.");
-      const picked = formData
-        .getAll("correct")
-        .map((v) => Number(v))
-        .filter((n) => Number.isInteger(n) && n >= 0 && n < options.length);
-      if (picked.length === 0) throw new Error("Chọn đáp án đúng.");
-      if (type === "single" && picked.length > 1) {
-        throw new Error("Câu một đáp án chỉ được chọn một đáp án đúng.");
-      }
-      correct = picked;
-    } else if (type === "boolean") {
-      correct = [String(formData.get("correctBoolean")) === "true"];
-    } else {
-      const variants = String(formData.get("correctText") ?? "")
-        .split("|")
-        .map((v) => v.trim())
-        .filter(Boolean);
-      if (variants.length === 0) throw new Error("Nhập đáp án đúng.");
-      correct = variants;
+  if (type === "single" || type === "multi") {
+    if (options.length < 2) throw new Error("Câu trắc nghiệm cần ít nhất 2 đáp án.");
+    const picked = formData
+      .getAll("correct")
+      .map((v) => Number(v))
+      .filter((n) => Number.isInteger(n) && n >= 0 && n < options.length);
+    if (picked.length === 0) throw new Error("Chọn đáp án đúng.");
+    if (type === "single" && picked.length > 1) {
+      throw new Error("Câu một đáp án chỉ được chọn một đáp án đúng.");
     }
+    correct = picked;
+  } else if (type === "boolean") {
+    correct = [String(formData.get("correctBoolean")) === "true"];
+  } else {
+    const variants = String(formData.get("correctText") ?? "")
+      .split("|")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (variants.length === 0) throw new Error("Nhập đáp án đúng.");
+    correct = variants;
+  }
 
-    const timeLimit = numberOrNull(formData.get("time_limit_s"));
-    const points = numberOrNull(formData.get("points"));
+  return {
+    type,
+    content,
+    image_url: String(formData.get("image_url") ?? "").trim() || null,
+    options: type === "single" || type === "multi" ? options : null,
+    correct,
+    time_limit_s: numberOrNull(formData.get("time_limit_s")),
+    points: numberOrNull(formData.get("points")),
+    explanation: String(formData.get("explanation") ?? "").trim() || null,
+  };
+}
 
-    await addQuestion(setId, {
-      type,
-      content,
-      image_url: String(formData.get("image_url") ?? "").trim() || null,
-      options: type === "single" || type === "multi" ? options : null,
-      correct,
-      time_limit_s: timeLimit,
-      points,
-      explanation: String(formData.get("explanation") ?? "").trim() || null,
-    });
-
+export async function addQuestionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const setId = String(formData.get("setId"));
+  try {
+    await addQuestion(setId, readQuestionForm(formData));
     revalidatePath(`/admin/questions/${setId}`);
     return { status: "ok", message: "Đã thêm câu hỏi." };
+  } catch (error) {
+    return { status: "error", message: message(error) };
+  }
+}
+
+export async function editQuestionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const setId = String(formData.get("setId"));
+  const questionId = String(formData.get("questionId"));
+  try {
+    // Sửa câu của bộ đề đang chạy sẽ lệch với đề đã phát cho thí sinh (question_order
+    // được chốt lúc vào phòng thi), nên chặn hẳn thay vì chỉ cảnh báo.
+    if (await isSetInActiveSession(setId)) {
+      throw new Error(
+        "Bộ đề này đang được lượt thi đang mở dùng. Kết thúc lượt rồi hãy sửa câu hỏi.",
+      );
+    }
+    await updateQuestion(questionId, readQuestionForm(formData));
+    revalidatePath(`/admin/questions/${setId}`);
+    return { status: "ok", message: "Đã lưu câu hỏi." };
   } catch (error) {
     return { status: "error", message: message(error) };
   }
@@ -287,9 +313,20 @@ export async function saveSettingsAction(
       return { status: "error", message: "Điểm mỗi câu phải là số dương." };
     }
 
+    // Để trống = 0 = lấy hết bộ đề.
+    const raw = String(formData.get("questions_per_attempt") ?? "").trim();
+    const perAttempt = raw === "" ? 0 : numberOrNull(raw);
+    if (perAttempt === null || perAttempt < 0 || perAttempt > 1000) {
+      return {
+        status: "error",
+        message: "Số câu mỗi lượt phải là số từ 0 đến 1000 (để trống là lấy hết bộ đề).",
+      };
+    }
+
     await updateSettings({
       default_time_limit_s: timeLimit,
       default_points: points,
+      questions_per_attempt: perAttempt,
       speed_bonus: formData.get("speed_bonus") === "on",
       show_feedback: formData.get("show_feedback") === "on",
       multi_all_or_nothing: formData.get("multi_all_or_nothing") === "on",

@@ -68,6 +68,37 @@ describe("buildQuestionOrder", () => {
     expect([...q1.options].sort()).toEqual([0, 1, 2, 3]);
   });
 
+  it("rút đúng số câu khi có giới hạn", () => {
+    const order = buildQuestionOrder(questions, "p1", 3);
+    expect(order).toHaveLength(3);
+    expect(new Set(order.map((o) => o.qid)).size).toBe(3);
+  });
+
+  it("cùng seed thì rút đúng tập câu cũ, reload không đổi đề", () => {
+    expect(buildQuestionOrder(questions, "p1", 3)).toEqual(buildQuestionOrder(questions, "p1", 3));
+  });
+
+  it("hai thí sinh khác nhau rút tập câu khác nhau", () => {
+    const a = buildQuestionOrder(questions, "participant-a", 2).map((o) => o.qid);
+    const b = buildQuestionOrder(questions, "participant-b", 2).map((o) => o.qid);
+    expect(a).not.toEqual(b);
+  });
+
+  it("rút nhiều hơn số câu có thì lấy hết, không crash", () => {
+    expect(buildQuestionOrder(questions, "p1", 99)).toHaveLength(5);
+  });
+
+  it("0 hoặc số âm nghĩa là lấy hết bộ đề", () => {
+    expect(buildQuestionOrder(questions, "p1", 0)).toEqual(buildQuestionOrder(questions, "p1"));
+    expect(buildQuestionOrder(questions, "p1", -1)).toHaveLength(5);
+  });
+
+  it("câu rút ra vẫn được trộn đáp án hợp lệ", () => {
+    const order = buildQuestionOrder(questions, "p4", 5);
+    const q1 = order.find((o) => o.qid === "q1")!;
+    expect([...q1.options].sort()).toEqual([0, 1, 2, 3]);
+  });
+
   it("câu boolean/text không có đáp án để trộn", () => {
     const order = buildQuestionOrder(questions, "p3");
     expect(order.find((o) => o.qid === "q2")!.options).toEqual([]);

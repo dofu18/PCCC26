@@ -1,5 +1,17 @@
 [
   {
+    "date": "2026-09-04",
+    "macrostructure": "Manifesto (giữ nguyên — brand pass, không đổi cấu trúc)",
+    "theme": "custom",
+    "theme_axes": "light / display-condensed-bold / warm",
+    "vibe": "poster cứu hỏa, mảng màu bold, thi đấu",
+    "genre": "playful",
+    "nav": "N7 Brutal slab + huy hiệu Phoenix",
+    "footer": "Ft5 Statement",
+    "enrichment": "logo BTC (public/phoenix26.png, alpha) ở nav mọi trang",
+    "brief": "PCCC26 · gắn logo BTC Phoenix + thêm tầng vàng kim lấy từ logo cho hạng nhất; đỏ giữ nguyên vì hue 30 đã trùng logo"
+  },
+  {
     "date": "2026-08-31",
     "macrostructure": "Manifesto",
     "theme": "custom",

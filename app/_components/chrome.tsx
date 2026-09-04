@@ -1,11 +1,23 @@
+import Image from "next/image";
 import type { ReactNode } from "react";
 
-/** Nav N7 Brutal slab — wordmark + một dòng trạng thái, không có dãy link. */
+/** Nav N7 Brutal slab — huy hiệu BTC + wordmark + một dòng trạng thái, không có dãy link. */
 export function Nav({ meta }: { meta?: ReactNode }) {
   return (
     <nav className="nav" aria-label="Chính">
-      <span className="nav__mark">
-        PCCC<span>26</span>
+      <span className="nav__brand">
+        {/* Huy hiệu chi tiết: dưới 48px là phù hiệu nát thành vệt đỏ, 64px mới đọc rõ cánh. */}
+        <Image
+          className="nav__logo"
+          src="/phoenix26.png"
+          alt="Phoenix — ban tổ chức"
+          width={321}
+          height={384}
+          priority
+        />
+        <span className="nav__mark">
+          PCCC<span>26</span>
+        </span>
       </span>
       {meta ? <span className="nav__meta">{meta}</span> : null}
     </nav>

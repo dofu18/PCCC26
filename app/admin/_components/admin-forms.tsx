@@ -10,13 +10,14 @@ import {
   deleteQuestionAction,
   deleteSessionAction,
   deleteSetAction,
+  editQuestionAction,
   importAction,
   loginAction,
   openSessionAction,
   resetSessionAction,
   saveSettingsAction,
 } from "../actions";
-import type { QuestionType, Settings } from "@/lib/types";
+import type { Question, QuestionType, Settings } from "@/lib/types";
 
 const idle: ActionState = { status: "idle" };
 
@@ -73,8 +74,22 @@ export function LoginForm() {
 
 /* ── Mở lượt ──────────────────────────────────────────────── */
 
-export function OpenSessionForm({ sets }: { sets: { id: string; name: string }[] }) {
+export function OpenSessionForm({
+  sets,
+  questionsPerAttempt,
+}: {
+  sets: { id: string; name: string; question_count: number }[];
+  questionsPerAttempt: number;
+}) {
   const [state, action, pending] = useActionState(openSessionAction, idle);
+  const [setId, setSetId] = useState(sets[0]?.id ?? "");
+  const chosen = sets.find((s) => s.id === setId) ?? sets[0];
+
+  // Rút nhiều hơn số câu có thì thực tế chỉ lấy được từng đó câu — báo trước để BTC
+  // không tưởng thí sinh sẽ làm đủ số đã đặt.
+  const short =
+    questionsPerAttempt > 0 && chosen ? questionsPerAttempt > chosen.question_count : false;
+
   return (
     <form action={action}>
       <Feedback state={state} />
@@ -84,13 +99,26 @@ export function OpenSessionForm({ sets }: { sets: { id: string; name: string }[]
       </label>
       <label className="field">
         <span className="field__label">Bộ câu hỏi</span>
-        <select className="field__select" name="questionSetId" required>
+        <select
+          className="field__select"
+          name="questionSetId"
+          required
+          value={setId}
+          onChange={(event) => setSetId(event.target.value)}
+        >
           {sets.map((set) => (
             <option key={set.id} value={set.id}>
-              {set.name}
+              {set.name} ({set.question_count} câu)
             </option>
           ))}
         </select>
+        <span className={short ? "field__hint field__hint--error" : "field__hint"}>
+          {questionsPerAttempt > 0
+            ? short
+              ? `Cấu hình đang rút ${questionsPerAttempt} câu mỗi lượt nhưng bộ đề chỉ có ${chosen?.question_count ?? 0} câu — thí sinh sẽ làm hết bộ đề.`
+              : `Mỗi thí sinh làm ${questionsPerAttempt} câu rút ngẫu nhiên từ bộ đề này.`
+            : "Mỗi thí sinh làm hết bộ đề, thứ tự câu và đáp án được trộn riêng."}
+        </span>
       </label>
       <button className="btn btn--primary" type="submit" disabled={pending}>
         {pending ? "Đang mở…" : "Mở lượt thi"}
@@ -560,17 +588,49 @@ export function ImportForm({ setId }: { setId: string }) {
   );
 }
 
-/* ── Thêm câu hỏi thủ công ────────────────────────────────── */
+/* ── Thêm / sửa câu hỏi thủ công ──────────────────────────── */
 
-export function AddQuestionForm({ setId }: { setId: string }) {
-  const [state, action, pending] = useActionState(addQuestionAction, idle);
-  const [type, setType] = useState<QuestionType>("single");
+/**
+ * Một form dùng cho cả thêm mới và sửa: truyền `question` là vào chế độ sửa.
+ * Giữ chung một bản để hai luồng không lệch nhau khi thêm dạng câu mới.
+ */
+export function QuestionForm({
+  setId,
+  question,
+  onDone,
+}: {
+  setId: string;
+  question?: Question;
+  onDone?: () => void;
+}) {
+  const editing = Boolean(question);
+  const [state, action, pending] = useActionState(
+    editing ? editQuestionAction : addQuestionAction,
+    idle,
+  );
+  const [type, setType] = useState<QuestionType>(question?.type ?? "single");
   const isChoice = type === "single" || type === "multi";
+
+  const options = question?.options ?? [];
+  const correctIndexes = new Set(
+    question && (question.type === "single" || question.type === "multi")
+      ? question.correct.map((c) => Number(c))
+      : [],
+  );
+  const correctBoolean =
+    question?.type === "boolean" ? String(question.correct[0] === true) : "true";
+  const correctText = question?.type === "text" ? question.correct.map(String).join(" | ") : "";
+
+  // Đóng form sửa ngay khi lưu xong để danh sách hiện lại nội dung mới.
+  useEffect(() => {
+    if (editing && state.status === "ok") onDone?.();
+  }, [editing, state, onDone]);
 
   return (
     <form action={action}>
       <Feedback state={state} />
       <input type="hidden" name="setId" value={setId} />
+      {question ? <input type="hidden" name="questionId" value={question.id} /> : null}
 
       <label className="field">
         <span className="field__label">Dạng câu</span>
@@ -589,12 +649,23 @@ export function AddQuestionForm({ setId }: { setId: string }) {
 
       <label className="field">
         <span className="field__label">Nội dung câu hỏi</span>
-        <textarea className="field__input" name="content" rows={3} required />
+        <textarea
+          className="field__input"
+          name="content"
+          rows={3}
+          defaultValue={question?.content ?? ""}
+          required
+        />
       </label>
 
       <label className="field">
         <span className="field__label">URL ảnh (không bắt buộc)</span>
-        <input className="field__input" name="image_url" placeholder="https://…" />
+        <input
+          className="field__input"
+          name="image_url"
+          placeholder="https://…"
+          defaultValue={question?.image_url ?? ""}
+        />
       </label>
 
       {isChoice ? (
@@ -609,13 +680,19 @@ export function AddQuestionForm({ setId }: { setId: string }) {
                 className="dlg__check"
                 style={{ margin: 0, padding: "var(--space-xs)", flex: "0 0 auto" }}
               >
-                <input type="checkbox" name="correct" value={index} />
+                <input
+                  type="checkbox"
+                  name="correct"
+                  value={index}
+                  defaultChecked={correctIndexes.has(index)}
+                />
                 <span className="sr-only">Đáp án {key.toUpperCase()} là đúng</span>
               </label>
               <input
                 className="field__input"
                 name={`option_${key}`}
                 placeholder={`Đáp án ${key.toUpperCase()}`}
+                defaultValue={options[index] ?? ""}
               />
             </div>
           ))}
@@ -625,7 +702,7 @@ export function AddQuestionForm({ setId }: { setId: string }) {
       {type === "boolean" ? (
         <label className="field">
           <span className="field__label">Đáp án đúng</span>
-          <select className="field__select" name="correctBoolean" defaultValue="true">
+          <select className="field__select" name="correctBoolean" defaultValue={correctBoolean}>
             <option value="true">Đúng</option>
             <option value="false">Sai</option>
           </select>
@@ -635,7 +712,12 @@ export function AddQuestionForm({ setId }: { setId: string }) {
       {type === "text" ? (
         <label className="field">
           <span className="field__label">Đáp án đúng</span>
-          <input className="field__input" name="correctText" placeholder="ABC" />
+          <input
+            className="field__input"
+            name="correctText"
+            placeholder="ABC"
+            defaultValue={correctText}
+          />
           <span className="field__hint">
             Nhiều cách viết thì cách nhau bằng dấu | — ví dụ <code>114 | một một bốn</code>. So khớp
             bỏ qua hoa thường và dấu.
@@ -646,23 +728,77 @@ export function AddQuestionForm({ setId }: { setId: string }) {
       <div style={{ display: "grid", gap: "var(--space-md)", gridTemplateColumns: "1fr 1fr" }}>
         <label className="field">
           <span className="field__label">Giây (trống = mặc định)</span>
-          <input className="field__input num" name="time_limit_s" inputMode="numeric" />
+          <input
+            className="field__input num"
+            name="time_limit_s"
+            inputMode="numeric"
+            defaultValue={question?.time_limit_s ?? ""}
+          />
         </label>
         <label className="field">
           <span className="field__label">Điểm (trống = mặc định)</span>
-          <input className="field__input num" name="points" inputMode="numeric" />
+          <input
+            className="field__input num"
+            name="points"
+            inputMode="numeric"
+            defaultValue={question?.points ?? ""}
+          />
         </label>
       </div>
 
       <label className="field">
         <span className="field__label">Giải thích hiện sau khi trả lời</span>
-        <textarea className="field__input" name="explanation" rows={2} />
+        <textarea
+          className="field__input"
+          name="explanation"
+          rows={2}
+          defaultValue={question?.explanation ?? ""}
+        />
       </label>
 
-      <button className="btn btn--primary" type="submit" disabled={pending}>
-        {pending ? "Đang lưu…" : "Thêm câu hỏi"}
-      </button>
+      <div className="btn-row">
+        <button className="btn btn--primary" type="submit" disabled={pending}>
+          {pending ? "Đang lưu…" : editing ? "Lưu câu hỏi" : "Thêm câu hỏi"}
+        </button>
+        {editing ? (
+          <button className="btn btn--ghost" type="button" onClick={onDone}>
+            Huỷ
+          </button>
+        ) : null}
+      </div>
     </form>
+  );
+}
+
+export function AddQuestionForm({ setId }: { setId: string }) {
+  return <QuestionForm setId={setId} />;
+}
+
+/** Nút "Sửa" mở form câu hỏi trong dialog — danh sách là bảng nên không chèn form inline được. */
+export function EditQuestionButton({ setId, question }: { setId: string; question: Question }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  return (
+    <>
+      <button
+        className="btn btn--ghost"
+        type="button"
+        onClick={() => dialogRef.current?.showModal()}
+      >
+        Sửa
+      </button>
+
+      <dialog ref={dialogRef} className="dialog--wide" aria-labelledby={`edit-${question.id}`}>
+        <div className="dlg dlg--scroll">
+          <h2 id={`edit-${question.id}`}>Sửa câu {question.order_index}</h2>
+          <QuestionForm
+            setId={setId}
+            question={question}
+            onDone={() => dialogRef.current?.close()}
+          />
+        </div>
+      </dialog>
+    </>
   );
 }
 
@@ -715,6 +851,21 @@ export function SettingsForm({ settings }: { settings: Settings }) {
           />
         </label>
       </div>
+
+      <label className="field">
+        <span className="field__label">Số câu mỗi lượt</span>
+        <input
+          className="field__input num"
+          name="questions_per_attempt"
+          inputMode="numeric"
+          placeholder="Để trống = lấy hết bộ đề"
+          defaultValue={settings.questions_per_attempt > 0 ? settings.questions_per_attempt : ""}
+        />
+        <span className="field__hint">
+          Rút ngẫu nhiên từng đó câu từ bộ đề cho mỗi thí sinh. Để trống (hoặc 0) thì ai cũng làm
+          hết bộ đề, chỉ khác thứ tự.
+        </span>
+      </label>
 
       <label className="dlg__check">
         <input type="checkbox" name="speed_bonus" defaultChecked={settings.speed_bonus} />
