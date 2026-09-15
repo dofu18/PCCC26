@@ -104,7 +104,9 @@ export function LiveLeaderboard({
       <AnimatePresence initial={false}>
         {rows.map((row, index) => {
           const classes = ["row"];
-          if (row.rank === 1) classes.push("row--lead");
+          if (row.rank === 1) classes.push("row--lead", "row--top1");
+          else if (row.rank === 2) classes.push("row--top2");
+          else if (row.rank === 3) classes.push("row--top3");
           if (row.participant_id === highlightParticipantId) classes.push("row--self");
           return (
             <motion.div
