@@ -2,19 +2,23 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { joinAction, type JoinState } from "../actions";
+import { isValidEmail } from "@/lib/validation";
 
 const CODE_PATTERN = /^[A-Z]{2}\d{6}$/;
 
 export function JoinForm() {
   const [code, setCode] = useState("");
   const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
+  const [emailTouched, setEmailTouched] = useState(false);
   const [state, setState] = useState<JoinState>({ status: "idle" });
   const [pending, startTransition] = useTransition();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const normalizedCode = code.trim().toUpperCase();
   const codeInvalid = touched && normalizedCode.length > 0 && !CODE_PATTERN.test(normalizedCode);
+  const emailInvalid = emailTouched && !isValidEmail(email);
 
   useEffect(() => {
     if (state.status === "duplicate") dialogRef.current?.showModal();
@@ -22,8 +26,10 @@ export function JoinForm() {
 
   function submit(force: boolean) {
     setTouched(true);
+    setEmailTouched(true);
+    if (!isValidEmail(email)) return;
     startTransition(async () => {
-      const next = await joinAction({ code: normalizedCode, fullName, force });
+      const next = await joinAction({ code: normalizedCode, fullName, email, force });
       setState(next);
     });
   }
@@ -72,9 +78,28 @@ export function JoinForm() {
             aria-describedby="name-hint"
             required
           />
-          <span className="field__hint" id="name-hint">
-            {normalizedCode && fullName.trim()
-              ? `Tên hiển thị trên bảng xếp hạng: ${normalizedCode} - ${fullName.trim()}`
+        </label>
+
+        <label className="field">
+          <span className="field__label">Email</span>
+          <input
+            className="field__input"
+            name="email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            onBlur={() => setEmailTouched(true)}
+            placeholder="khoitm@fpt.edu.vn"
+            autoComplete="email"
+            aria-invalid={emailInvalid || undefined}
+            aria-describedby="email-hint"
+            required
+          />
+          <span className={`field__hint${emailInvalid ? " field__hint--error" : ""}`} id="email-hint">
+            {emailInvalid
+              ? "Nhập email đúng định dạng, ví dụ baochg@gmail.com"
+              : normalizedCode && fullName.trim()
+              ? `Tên hiển thị: ${normalizedCode} - ${fullName.trim()}`
               : "Tên hiển thị trên bảng xếp hạng sẽ là “mã số - họ và tên”."}
           </span>
         </label>
@@ -88,7 +113,7 @@ export function JoinForm() {
         <button
           className="btn btn--primary"
           type="submit"
-          disabled={pending || !normalizedCode || !fullName.trim()}
+          disabled={pending || !normalizedCode || !fullName.trim() || !isValidEmail(email)}
         >
           {pending ? "Đang vào…" : "Vào phòng thi"}
         </button>

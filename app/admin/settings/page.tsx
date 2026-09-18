@@ -14,8 +14,8 @@ export default async function SettingsPage() {
         </h1>
 
         <p className="notice" style={{ marginBottom: "var(--space-lg)" }}>
-          Mỗi lượt thi ghi lại cấu hình tại thời điểm mở lượt. Sửa ở đây chỉ ảnh hưởng các lượt mở
-          sau, không làm lệch điểm của lượt đang chạy hay đã kết thúc.
+          Cấu hình áp dụng ngay cho lượt đang chạy và được lưu làm mặc định cho các lượt mở sau.
+          Các lượt đã kết thúc không thay đổi.
         </p>
 
         <SettingsForm settings={settings} />

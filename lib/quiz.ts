@@ -3,6 +3,7 @@ import { describeCorrect, describeGiven } from "./answer-text";
 import { elapsedMs, grade } from "./scoring";
 import { buildQuestionOrder, displayOptions, toOriginalIndex } from "./shuffle";
 import { db } from "./supabase";
+import { isValidEmail } from "./validation";
 import type {
   GivenAnswer,
   LeaderboardRow,
@@ -20,6 +21,7 @@ export type ParticipantRow = {
   session_id: string;
   code: string;
   full_name: string;
+  email: string | null;
   display_name: string;
   attempt_no: number;
   question_order: OrderedQuestion[];
@@ -37,6 +39,10 @@ export function normalizeName(input: string): string {
   return input.trim().replace(/\s+/g, " ");
 }
 
+export function normalizeEmail(input: string): string {
+  return input.trim().toLowerCase();
+}
+
 export function displayNameFor(code: string, fullName: string): string {
   return `${code} - ${fullName}`;
 }
@@ -44,12 +50,13 @@ export function displayNameFor(code: string, fullName: string): string {
 export async function getSettings(): Promise<Settings> {
   const { data, error } = await db()
     .from("app_settings")
-    .select("show_feedback, multi_all_or_nothing, questions_per_attempt")
+    .select("show_feedback, multi_all_or_nothing, questions_per_attempt, time_limit_minutes")
     .eq("id", 1)
     .single();
   if (error) throw new Error(`Không đọc được cấu hình: ${error.message}`);
   return data as Settings;
 }
+
 
 export async function getActiveSession(): Promise<SessionRow | null> {
   const { data, error } = await db()
@@ -65,6 +72,15 @@ export async function getSession(id: string): Promise<SessionRow | null> {
   const { data, error } = await db().from("sessions").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(`Không đọc được lượt: ${error.message}`);
   return (data as SessionRow) ?? null;
+}
+
+export async function countQuestionsInSet(setId: string): Promise<number> {
+  const { count, error } = await db()
+    .from("questions")
+    .select("id", { count: "exact", head: true })
+    .eq("set_id", setId);
+  if (error) throw new Error(`Không đếm được số câu hỏi: ${error.message}`);
+  return count ?? 0;
 }
 
 async function getQuestionsOfSet(setId: string): Promise<Question[]> {
@@ -102,10 +118,12 @@ export type JoinResult =
 export async function joinSession(input: {
   code: string;
   fullName: string;
+  email: string;
   force?: boolean;
 }): Promise<JoinResult> {
   const code = normalizeCode(input.code);
   const fullName = normalizeName(input.fullName);
+  const email = normalizeEmail(input.email);
 
   if (!CODE_PATTERN.test(code)) {
     return {
@@ -115,6 +133,9 @@ export async function joinSession(input: {
   }
   if (fullName.length < 2) {
     return { status: "invalid", message: "Nhập họ và tên của bạn." };
+  }
+  if (!isValidEmail(email)) {
+    return { status: "invalid", message: "Nhập email hợp lệ." };
   }
 
   const session = await getActiveSession();
@@ -142,6 +163,7 @@ export async function joinSession(input: {
       session_id: session.id,
       code,
       full_name: fullName,
+      email,
       display_name: displayNameFor(code, fullName),
       attempt_no: attemptNo,
       question_order: order,
@@ -190,6 +212,16 @@ export async function currentStep(participant: ParticipantRow): Promise<QuizStep
   const session = await getSession(participant.session_id);
   if (!session) return { kind: "done" };
   const settings = session.settings;
+
+  // Kiểm tra giới hạn thời gian
+  if (settings.time_limit_minutes > 0) {
+    const startTime = new Date(participant.started_at);
+    const endTime = new Date(startTime.getTime() + settings.time_limit_minutes * 60000);
+    if (new Date() > endTime) {
+      await finishParticipant(participant.id);
+      return { kind: "done" };
+    }
+  }
 
   const step = order[participant.cursor_index];
   const { data, error } = await db()
@@ -271,6 +303,14 @@ export async function submitAnswer(
   const session = await getSession(participant.session_id);
   if (!session) throw new Error("Lượt thi không còn tồn tại.");
   const settings = session.settings;
+
+  if (
+    settings.time_limit_minutes > 0 &&
+    Date.now() >= new Date(participant.started_at).getTime() + settings.time_limit_minutes * 60000
+  ) {
+    await finishParticipant(participant.id);
+    throw new Error("Bài thi đã hết thời gian.");
+  }
 
   const step = order[participant.cursor_index];
   const { data, error } = await db().from("questions").select("*").eq("id", step.qid).single();

@@ -14,7 +14,7 @@ import type { GivenAnswer } from "@/lib/types";
 export type JoinState =
   | { status: "idle" }
   | { status: "error"; message: string }
-  | { status: "duplicate"; attempts: number; code: string; fullName: string };
+  | { status: "duplicate"; attempts: number; code: string; fullName: string; email: string };
 
 /**
  * Vào phòng thi. Mã số đã dùng trong lượt này thì trả về `duplicate` để UI
@@ -23,6 +23,7 @@ export type JoinState =
 export async function joinAction(input: {
   code: string;
   fullName: string;
+  email: string;
   force?: boolean;
 }): Promise<JoinState> {
   const result = await joinSession(input);
@@ -37,6 +38,7 @@ export async function joinAction(input: {
         attempts: result.attempts,
         code: input.code,
         fullName: input.fullName,
+        email: input.email,
       };
     case "invalid":
       return { status: "error", message: result.message };
@@ -72,6 +74,9 @@ export async function submitAnswerAction(given: GivenAnswer): Promise<SubmitStat
     const result = await submitAnswer(participant, given);
     return { status: "ok", result };
   } catch (error) {
+    if (error instanceof Error && error.message === "Bài thi đã hết thời gian.") {
+      redirect("/result");
+    }
     return {
       status: "error",
       message: error instanceof Error ? error.message : "Không lưu được đáp án.",

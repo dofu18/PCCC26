@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ErrorNotice, Nav, SetupNotice } from "../_components/chrome";
-import { QuizRunner } from "../_components/quiz-runner";
+import { ErrorNotice, SetupNotice } from "../_components/chrome";
 import { readParticipantCookie } from "@/lib/auth";
 import { currentStep, getParticipant } from "@/lib/quiz";
 import { isConfigured } from "@/lib/supabase";
+import { QuizPageClient } from "./_components/quiz-page-client";
 
 export const dynamic = "force-dynamic";
 
@@ -27,19 +27,15 @@ export default async function QuizPage() {
   const step = await currentStep(participant);
   if (step.kind === "done") redirect("/result");
 
-  return (
-    <main>
-      <section className="band band--paper2 band--tight">
-        <div className="wrap">
-          <Nav meta={<span className="num">{participant.code}</span>} />
-        </div>
-      </section>
+  const session = await import("@/lib/quiz").then(q => q.getSession(participant.session_id));
+  const timeLimitMinutes = session?.settings.time_limit_minutes ?? 0;
 
-      <QuizRunner
-        key={step.question.id}
-        question={step.question}
-        servedAt={step.servedAt}
-      />
-    </main>
+  return (
+    <QuizPageClient
+      participant={participant}
+      question={step.question}
+      timeLimitMinutes={timeLimitMinutes}
+      startedAt={participant.started_at}
+    />
   );
 }

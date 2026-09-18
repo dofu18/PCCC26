@@ -237,11 +237,41 @@ export async function deleteSession(sessionId: string): Promise<void> {
 /* ── Cấu hình ─────────────────────────────────────────────── */
 
 export async function updateSettings(patch: Partial<Settings>): Promise<void> {
+  // Lấy dữ liệu hiện tại để merge với patch
+  const { data: current, error: fetchError } = await db()
+    .from("app_settings")
+    .select("show_feedback, multi_all_or_nothing, questions_per_attempt, time_limit_minutes")
+    .eq("id", 1)
+    .single();
+  if (fetchError) throw new Error(`Không đọc được cấu hình cũ: ${fetchError.message}`);
+
+  const nextSettings = { ...current, ...patch };
   const { error } = await db()
     .from("app_settings")
-    .update({ ...patch, updated_at: new Date().toISOString() })
+    .update({ 
+      ...nextSettings,
+      updated_at: new Date().toISOString() 
+    })
     .eq("id", 1);
   if (error) throw new Error(`Không lưu được cấu hình: ${error.message}`);
+
+  const { data: activeSession, error: activeSessionError } = await db()
+    .from("sessions")
+    .select("id")
+    .eq("status", "active")
+    .maybeSingle();
+  if (activeSessionError) throw new Error(`Không đọc được lượt đang chạy: ${activeSessionError.message}`);
+
+  if (activeSession) {
+    const { error: sessionUpdateError } = await db()
+      .from("sessions")
+      .update({ settings: nextSettings })
+      .eq("id", activeSession.id)
+      .eq("status", "active");
+    if (sessionUpdateError) {
+      throw new Error(`Không cập nhật được cấu hình lượt đang chạy: ${sessionUpdateError.message}`);
+    }
+  }
 }
 
 /* ── Dữ liệu xuất Excel ───────────────────────────────────── */
@@ -250,7 +280,7 @@ export async function answerDetails(sessionId: string): Promise<AnswerDetail[]> 
   const { data, error } = await db()
     .from("answers")
     .select(
-      "order_index, given, is_correct, time_ms, participants!inner(code, full_name, session_id), questions(content, options, type)",
+      "order_index, given, is_correct, time_ms, participants!inner(code, full_name, email, session_id), questions(content, options, type)",
     )
     .eq("participants.session_id", sessionId)
     .order("order_index", { ascending: true });
@@ -261,7 +291,7 @@ export async function answerDetails(sessionId: string): Promise<AnswerDetail[]> 
     given: unknown;
     is_correct: boolean;
     time_ms: number;
-    participants: { code: string; full_name: string } | null;
+    participants: { code: string; full_name: string; email: string | null } | null;
     questions: { content: string; options: string[] | null; type: string } | null;
   };
 
@@ -269,6 +299,7 @@ export async function answerDetails(sessionId: string): Promise<AnswerDetail[]> 
     .map((row) => ({
       code: row.participants?.code ?? "?",
       full_name: row.participants?.full_name ?? "?",
+      email: row.participants?.email ?? null,
       order_index: row.order_index,
       question: row.questions?.content ?? "(câu hỏi đã bị xoá)",
       given_text: describeGiven(row.given, row.questions?.options ?? null),

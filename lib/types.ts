@@ -31,6 +31,8 @@ export type Settings = {
   multi_all_or_nothing: boolean;
   /** Số câu rút ngẫu nhiên từ bộ đề cho mỗi lượt làm bài. 0 = lấy hết bộ đề. */
   questions_per_attempt: number;
+  /** Giới hạn thời gian làm bài (phút). 0 = không giới hạn. */
+  time_limit_minutes: number;
 };
 
 export type SessionRow = {
@@ -56,6 +58,7 @@ export type LeaderboardRow = {
   session_id: string;
   code: string;
   full_name: string;
+  email: string | null;
   display_name: string;
   attempt_no: number;
   started_at: string;

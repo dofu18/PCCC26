@@ -11,17 +11,21 @@ const LETTERS = "ABCDEFGHIJ";
 
 type Props = {
   question: PublicQuestion;
-  /** lúc server phát câu này (ISO) — client đếm LÊN từ mốc đó */
-  servedAt: string;
+  startedAt: string;
+  timeLimitMinutes: number;
 };
 
-export function QuizRunner({ question, servedAt }: Props) {
+export function QuizRunner({ question, startedAt, timeLimitMinutes }: Props) {
   const router = useRouter();
   const [picked, setPicked] = useState<number[]>([]);
   const [text, setText] = useState("");
   const [feedback, setFeedback] = useState<SubmitResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState(0);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(() =>
+    timeLimitMinutes > 0
+      ? Math.max(0, Math.ceil((new Date(startedAt).getTime() + timeLimitMinutes * 60000 - Date.now()) / 1000))
+      : null,
+  );
   const [pending, startTransition] = useTransition();
   const sentRef = useRef(false);
 
@@ -47,24 +51,22 @@ export function QuizRunner({ question, servedAt }: Props) {
     [router],
   );
 
-  // Đồng hồ đếm LÊN. Không có hạn giờ, không tự nộp — chỉ cho thí sinh thấy thời gian
-  // đang được tính, vì tổng thời gian là tiêu chí xếp hạng khi bằng số câu đúng.
-  // Mốc là served_at của server; chênh lệch đồng hồ máy thí sinh chỉ ảnh hưởng phần hiển
-  // thị, còn thời gian tính điểm vẫn do server đo.
+  // Đồng hồ đếm ngược theo toàn bài; việc hết giờ vẫn được chốt ở server và page client.
   useEffect(() => {
-    if (feedback) return;
-    const start = new Date(servedAt).getTime();
-    const tick = () => setElapsed(Math.max(0, Date.now() - start));
-    tick();
+    if (timeLimitMinutes <= 0) return;
+
+    const end = new Date(startedAt).getTime() + timeLimitMinutes * 60000;
+    const tick = () => setRemainingSeconds(Math.max(0, Math.ceil((end - Date.now()) / 1000)));
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, [servedAt, feedback]);
+  }, [startedAt, timeLimitMinutes]);
 
   // Không cần dọn state khi sang câu mới: trang truyền `key={question.id}`
   // nên React tự dựng lại component với state ban đầu.
-
-  const totalSeconds = Math.floor(elapsed / 1000);
-  const clock = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
+  const clock =
+    remainingSeconds === null
+      ? "—"
+      : `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, "0")}`;
   const locked = Boolean(feedback) || pending;
 
   function next() {
@@ -79,6 +81,9 @@ export function QuizRunner({ question, servedAt }: Props) {
     return "opt";
   }
 
+  const accessibleClock =
+    remainingSeconds === null ? "Bài thi không giới hạn thời gian." : `Còn lại ${clock} cho toàn bài.`;
+
   return (
     <>
       <section className="band band--paper2 band--tight">
@@ -88,12 +93,12 @@ export function QuizRunner({ question, servedAt }: Props) {
               Câu {question.index} / {question.total}
             </span>
             <span className="qbar__timer num" aria-hidden="true">
-              {feedback ? "—" : clock}
+              {clock}
             </span>
           </div>
         </div>
         <p className="sr-only" role="status">
-          {feedback ? "Đã trả lời." : `Đã dùng ${totalSeconds} giây cho câu này.`}
+          {feedback ? "Đã trả lời." : accessibleClock}
         </p>
       </section>
 
@@ -105,7 +110,7 @@ export function QuizRunner({ question, servedAt }: Props) {
             <figure className="qfig">
               {/* Ảnh do BTC dán URL nên không biết trước kích thước; dùng img thường
                   thay vì next/image để không phải khai báo remote host cho từng nguồn. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={question.image_url} alt="" loading="eager" fetchPriority="high" />
             </figure>
           ) : null}

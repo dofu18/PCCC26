@@ -109,6 +109,7 @@ export default async function ResultPage() {
             <LiveLeaderboard
               sessionId={participant.session_id}
               highlightParticipantId={participantId}
+              totalQuestions={totalQuestions}
               initialRows={board.map((row) => ({
                 participant_id: row.participant_id,
                 rank: row.rank,

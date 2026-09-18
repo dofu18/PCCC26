@@ -318,8 +318,18 @@ export async function saveSettingsAction(
       };
     }
 
+    const rawTime = String(formData.get("time_limit_minutes") ?? "").trim();
+    const timeLimit = rawTime === "" ? 0 : numberOrNull(rawTime);
+    if (timeLimit === null || timeLimit < 0 || timeLimit > 1440) {
+      return {
+        status: "error",
+        message: "Giới hạn thời gian phải là số từ 0 đến 1440 phút (để trống là không giới hạn).",
+      };
+    }
+
     await updateSettings({
       questions_per_attempt: perAttempt,
+      time_limit_minutes: timeLimit,
       show_feedback: formData.get("show_feedback") === "on",
       multi_all_or_nothing: formData.get("multi_all_or_nothing") === "on",
     });
@@ -327,7 +337,7 @@ export async function saveSettingsAction(
     revalidatePath("/admin/settings");
     return {
       status: "ok",
-      message: "Đã lưu. Cấu hình mới áp dụng cho các lượt mở sau, lượt đang chạy giữ nguyên.",
+      message: "Đã lưu. Cấu hình mới áp dụng cho lượt đang chạy và các lượt mở sau.",
     };
   });
 }

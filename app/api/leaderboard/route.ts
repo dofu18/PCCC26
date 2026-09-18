@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { countLeaderboard, getActiveSession, getLeaderboard, getSession } from "@/lib/quiz";
+import {
+  countLeaderboard,
+  countQuestionsInSet,
+  getActiveSession,
+  getLeaderboard,
+  getSession,
+} from "@/lib/quiz";
 import { isConfigured } from "@/lib/supabase";
 
 /**
@@ -26,14 +32,21 @@ export async function GET(request: Request) {
     }
 
     // Đếm riêng: `rows` bị cắt theo limit nên không dùng rows.length làm sĩ số được.
-    const [rows, participantCount] = await Promise.all([
+    const [rows, participantCount, questionCount] = await Promise.all([
       getLeaderboard(session.id, limit),
       countLeaderboard(session.id),
+      countQuestionsInSet(session.question_set_id),
     ]);
+    const totalQuestions = session.settings.questions_per_attempt || questionCount;
 
     return NextResponse.json(
       {
-        session: { id: session.id, name: session.name, status: session.status },
+        session: {
+          id: session.id,
+          name: session.name,
+          status: session.status,
+          total_questions: totalQuestions,
+        },
         participant_count: participantCount,
         rows: rows.map((r) => ({
           participant_id: r.participant_id,

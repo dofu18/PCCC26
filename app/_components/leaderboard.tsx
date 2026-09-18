@@ -18,7 +18,7 @@ export type BoardRow = {
 };
 
 type Payload = {
-  session: { id: string; name: string; status: string } | null;
+  session: { id: string; name: string; status: string; total_questions?: number } | null;
   rows: BoardRow[];
   /** sĩ số thật của lượt — `rows` bị cắt theo limit nên không dùng rows.length được */
   participant_count?: number;
@@ -50,12 +50,14 @@ export function LiveLeaderboard({
   limit = 20,
   highlightParticipantId,
   initialRows,
+  totalQuestions,
   refreshMs = 2000,
 }: {
   sessionId?: string;
   limit?: number;
   highlightParticipantId?: string;
   initialRows?: BoardRow[];
+  totalQuestions?: number;
   refreshMs?: number;
 }) {
   const { data, error } = useSWR<Payload>(boardKey(sessionId, limit), fetcher, {
@@ -129,7 +131,7 @@ export function LiveLeaderboard({
                 <span className="row__code num">{row.code}</span>
               </span>
               <span className="row__pts num" data-pts={row.participant_id}>
-                {row.correct_count}
+                {row.correct_count}/{data?.session?.total_questions ?? totalQuestions ?? "—"}
                 <span className="row__unit"> câu</span>
                 <br />
                 <span className="row__time num">{formatDuration(row.total_time_ms)}</span>

@@ -831,6 +831,20 @@ export function SettingsForm({ settings }: { settings: Settings }) {
       <Feedback state={state} />
 
       <label className="field">
+        <span className="field__label">Giới hạn thời gian (phút)</span>
+        <input
+          className="field__input num"
+          name="time_limit_minutes"
+          inputMode="numeric"
+          placeholder="Để trống = không giới hạn"
+          defaultValue={settings.time_limit_minutes > 0 ? settings.time_limit_minutes : ""}
+        />
+        <span className="field__hint">
+          Sau số phút này, bài thi tự động kết thúc, các câu chưa làm được tính là bỏ qua. Để trống (hoặc 0) để không giới hạn.
+        </span>
+      </label>
+
+      <label className="field">
         <span className="field__label">Số câu mỗi lượt</span>
         <input
           className="field__input num"

@@ -280,6 +280,7 @@ export async function buildQuestionTemplate(): Promise<ArrayBuffer> {
 export type AnswerDetail = {
   code: string;
   full_name: string;
+  email: string | null;
   order_index: number;
   question: string;
   given_text: string;
@@ -310,6 +311,7 @@ export async function buildLeaderboardWorkbook(
     { header: "Hạng", key: "rank", width: 8 },
     { header: "Mã số", key: "code", width: 14 },
     { header: "Họ tên", key: "name", width: 26 },
+    { header: "Email", key: "email", width: 30 },
     { header: "Tên hiển thị", key: "display", width: 40 },
     { header: "Số câu đúng", key: "correct", width: 14 },
     { header: "Số câu đã trả lời", key: "answered", width: 18 },
@@ -324,6 +326,7 @@ export async function buildLeaderboardWorkbook(
       rank: r.rank,
       code: r.code,
       name: r.full_name,
+      email: r.email,
       display: r.display_name,
       correct: r.correct_count,
       answered: r.answered_count,
@@ -346,6 +349,7 @@ export async function buildLeaderboardWorkbook(
   ds.columns = [
     { header: "Mã số", key: "code", width: 14 },
     { header: "Họ tên", key: "name", width: 26 },
+    { header: "Email", key: "email", width: 30 },
     { header: "Câu số", key: "order", width: 9 },
     { header: "Câu hỏi", key: "question", width: 60 },
     { header: "Đã chọn", key: "given", width: 40 },
@@ -358,6 +362,7 @@ export async function buildLeaderboardWorkbook(
     ds.addRow({
       code: d.code,
       name: d.full_name,
+      email: d.email,
       order: d.order_index,
       question: d.question,
       given: d.given_text,
