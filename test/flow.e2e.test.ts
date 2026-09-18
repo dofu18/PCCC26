@@ -36,6 +36,7 @@ import { db } from "@/lib/supabase";
 import type { GivenAnswer } from "@/lib/types";
 
 const TAG = "[e2e]";
+const TEST_EMAIL = "e2e@example.com";
 let setId: string;
 let sessionId: string;
 
@@ -151,15 +152,15 @@ async function playThrough(participantId: string, delayMs: number, behaviour: Be
 
 describe("luồng thí sinh", () => {
   it("mã số sai định dạng bị chặn", async () => {
-    expect(await joinSession({ code: "HE12345", fullName: "Sai định dạng" })).toEqual({
+    expect(await joinSession({ code: "HE12345", fullName: "Sai định dạng", email: TEST_EMAIL })).toEqual({
       status: "invalid",
       message: "Mã số gồm hai chữ cái và sáu chữ số, ví dụ HE180234.",
     });
-    expect((await joinSession({ code: "HE111111", fullName: "A" })).status).toBe("invalid");
+    expect((await joinSession({ code: "HE111111", fullName: "A", email: TEST_EMAIL })).status).toBe("invalid");
   });
 
   it("vào phòng và nhận đề đã trộn", async () => {
-    const join = await joinSession({ code: "HE111111", fullName: "Lê Thu Hà" });
+    const join = await joinSession({ code: "HE111111", fullName: "Lê Thu Hà", email: TEST_EMAIL });
     expect(join.status).toBe("ok");
     if (join.status !== "ok") return;
 
@@ -176,8 +177,8 @@ describe("luồng thí sinh", () => {
   });
 
   it("hai thí sinh nhận thứ tự câu khác nhau", async () => {
-    const a = await joinSession({ code: "HE222222", fullName: "Trần Minh Khôi" });
-    const b = await joinSession({ code: "HE333333", fullName: "Phạm Quốc Đạt" });
+    const a = await joinSession({ code: "HE222222", fullName: "Trần Minh Khôi", email: TEST_EMAIL });
+    const b = await joinSession({ code: "HE333333", fullName: "Phạm Quốc Đạt", email: TEST_EMAIL });
     if (a.status !== "ok" || b.status !== "ok") throw new Error("join thất bại");
 
     const pa = (await getParticipant(a.participantId))!;
@@ -186,10 +187,10 @@ describe("luồng thí sinh", () => {
   });
 
   it("mã số trùng phải hỏi lại trước khi cho vào", async () => {
-    const dup = await joinSession({ code: "HE111111", fullName: "Lê Thu Hà" });
+    const dup = await joinSession({ code: "HE111111", fullName: "Lê Thu Hà", email: TEST_EMAIL });
     expect(dup).toEqual({ status: "duplicate", attempts: 1 });
 
-    const forced = await joinSession({ code: "HE111111", fullName: "Lê Thu Hà", force: true });
+    const forced = await joinSession({ code: "HE111111", fullName: "Lê Thu Hà", email: TEST_EMAIL, force: true });
     expect(forced.status).toBe("ok");
     expect(await countAttempts(sessionId, "HE111111")).toBe(2);
   });
@@ -197,8 +198,8 @@ describe("luồng thí sinh", () => {
 
 describe("chấm điểm trên DB thật", () => {
   it("làm nhanh và làm chậm đều đúng hết, nhưng người nhanh có tổng thời gian ít hơn", async () => {
-    const fast = await joinSession({ code: "HE444444", fullName: "Võ Ngọc Ánh", force: true });
-    const slow = await joinSession({ code: "HE555555", fullName: "Bùi Thanh Trúc", force: true });
+    const fast = await joinSession({ code: "HE444444", fullName: "Võ Ngọc Ánh", email: TEST_EMAIL, force: true });
+    const slow = await joinSession({ code: "HE555555", fullName: "Bùi Thanh Trúc", email: TEST_EMAIL, force: true });
     if (fast.status !== "ok" || slow.status !== "ok") throw new Error("join thất bại");
 
     const fastResults = await playThrough(fast.participantId, 1_000, "correct");
@@ -219,7 +220,7 @@ describe("chấm điểm trên DB thật", () => {
   }, 60_000);
 
   it("trả lời sai vẫn được ghi nhận, chỉ là không tính đúng", async () => {
-    const join = await joinSession({ code: "HE666666", fullName: "Đặng Hải Long", force: true });
+    const join = await joinSession({ code: "HE666666", fullName: "Đặng Hải Long", email: TEST_EMAIL, force: true });
     if (join.status !== "ok") throw new Error("join thất bại");
 
     const results = await playThrough(join.participantId, 500, "wrong");
@@ -231,7 +232,7 @@ describe("chấm điểm trên DB thật", () => {
   }, 60_000);
 
   it("ngồi rất lâu không còn bị tính hết giờ — đáp án đúng vẫn được công nhận", async () => {
-    const join = await joinSession({ code: "HE777777", fullName: "Ngô Bảo Châu", force: true });
+    const join = await joinSession({ code: "HE777777", fullName: "Ngô Bảo Châu", email: TEST_EMAIL, force: true });
     if (join.status !== "ok") throw new Error("join thất bại");
 
     const participant = (await getParticipant(join.participantId))!;
@@ -267,7 +268,7 @@ describe("chấm điểm trên DB thật", () => {
   }, 60_000);
 
   it("bỏ qua câu: tính sai, không lưu đáp án, vẫn đi tiếp", async () => {
-    const join = await joinSession({ code: "HE999999", fullName: "Lý Gia Bảo", force: true });
+    const join = await joinSession({ code: "HE999999", fullName: "Lý Gia Bảo", email: TEST_EMAIL, force: true });
     if (join.status !== "ok") throw new Error("join thất bại");
 
     const participant = (await getParticipant(join.participantId))!;
@@ -294,7 +295,7 @@ describe("chấm điểm trên DB thật", () => {
   }, 60_000);
 
   it("gửi lại đáp án cho cùng một câu không ghi thêm dòng thứ hai", async () => {
-    const join = await joinSession({ code: "HE888888", fullName: "Hoàng Thị Mai", force: true });
+    const join = await joinSession({ code: "HE888888", fullName: "Hoàng Thị Mai", email: TEST_EMAIL, force: true });
     if (join.status !== "ok") throw new Error("join thất bại");
 
     const participant = (await getParticipant(join.participantId))!;
@@ -370,7 +371,7 @@ describe("xuất Excel", () => {
     const board = wb.getWorksheet("Bảng xếp hạng")!;
     expect(board.getRow(2).getCell(2).value).toBe(rows[0].code);
     expect(board.getRow(2).getCell(3).value).toBe(rows[0].full_name);
-    expect(board.getRow(2).getCell(5).value).toBe(rows[0].correct_count);
+    expect(board.getRow(2).getCell(6).value).toBe(rows[0].correct_count);
     expect(board.getRow(1).values).not.toContain("Điểm");
 
     // tiếng Việt có dấu phải nguyên vẹn
@@ -380,7 +381,7 @@ describe("xuất Excel", () => {
     const detail = wb.getWorksheet("Chi tiết trả lời")!;
     expect(detail.rowCount).toBe(details.length + 1);
     // cột "Đã chọn" phải là chữ người đọc được, không phải JSON
-    const given = String(detail.getRow(2).getCell(5).value ?? "");
+    const given = String(detail.getRow(2).getCell(6).value ?? "");
     expect(given).not.toContain("{");
   }, 60_000);
 });
@@ -444,7 +445,7 @@ describe("reset lượt", () => {
 
     // lượt mới trống và nhận được thí sinh
     expect(await getLeaderboard(nextSessionId, 10)).toEqual([]);
-    const join = await joinSession({ code: "HE999999", fullName: "Nguyễn Hải Yến" });
+    const join = await joinSession({ code: "HE999999", fullName: "Nguyễn Hải Yến", email: TEST_EMAIL });
     expect(join.status).toBe("ok");
 
     // dọn: đóng lượt mới để không chặn lượt thật của BTC

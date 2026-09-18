@@ -23,6 +23,7 @@ import { db } from "@/lib/supabase";
 import type { Settings } from "@/lib/types";
 
 const TAG = "[e2e-sub]";
+const TEST_EMAIL = "e2e-subset@example.com";
 const BANK_SIZE = 8;
 const PER_ATTEMPT = 3;
 
@@ -64,7 +65,7 @@ afterAll(async () => {
 
 describe("rút ngẫu nhiên N câu từ ngân hàng", () => {
   it("mỗi thí sinh chỉ nhận đúng số câu đã cấu hình", async () => {
-    const joined = await joinSession({ code: "SE900001", fullName: "Rút đề A" });
+    const joined = await joinSession({ code: "SE900001", fullName: "Rút đề A", email: TEST_EMAIL });
     expect(joined.status).toBe("ok");
     const participant = (await getParticipant((joined as { participantId: string }).participantId))!;
     expect(participant.question_order).toHaveLength(PER_ATTEMPT);
@@ -72,8 +73,8 @@ describe("rút ngẫu nhiên N câu từ ngân hàng", () => {
   });
 
   it("hai thí sinh rút hai tập câu khác nhau từ cùng ngân hàng", async () => {
-    const a = await joinSession({ code: "SE900002", fullName: "Rút đề B" });
-    const b = await joinSession({ code: "SE900003", fullName: "Rút đề C" });
+    const a = await joinSession({ code: "SE900002", fullName: "Rút đề B", email: TEST_EMAIL });
+    const b = await joinSession({ code: "SE900003", fullName: "Rút đề C", email: TEST_EMAIL });
     const pa = (await getParticipant((a as { participantId: string }).participantId))!;
     const pb = (await getParticipant((b as { participantId: string }).participantId))!;
     expect(pa.question_order.map((q) => q.qid)).not.toEqual(pb.question_order.map((q) => q.qid));
@@ -81,20 +82,20 @@ describe("rút ngẫu nhiên N câu từ ngân hàng", () => {
 
   it("mọi câu rút ra đều thuộc ngân hàng của bộ đề", async () => {
     const ids = new Set((await listQuestions(setId)).map((q) => q.id));
-    const joined = await joinSession({ code: "SE900004", fullName: "Rút đề D" });
+    const joined = await joinSession({ code: "SE900004", fullName: "Rút đề D", email: TEST_EMAIL });
     const participant = (await getParticipant((joined as { participantId: string }).participantId))!;
     for (const q of participant.question_order) expect(ids.has(q.qid)).toBe(true);
   });
 
-  it("đổi cấu hình giữa chừng không làm lệch lượt đang chạy", async () => {
+  it("đổi cấu hình giữa chừng áp dụng ngay cho lượt đang chạy", async () => {
     await updateSettings({ questions_per_attempt: 1 });
     try {
-      const joined = await joinSession({ code: "SE900005", fullName: "Rút đề E" });
+      const joined = await joinSession({ code: "SE900005", fullName: "Rút đề E", email: TEST_EMAIL });
       const participant = (await getParticipant(
         (joined as { participantId: string }).participantId,
       ))!;
-      // Lượt dùng snapshot lúc mở nên vẫn là PER_ATTEMPT, không phải 1.
-      expect(participant.question_order).toHaveLength(PER_ATTEMPT);
+      // Cấu hình mới được đồng bộ vào session active nên lượt tiếp theo nhận 1 câu.
+      expect(participant.question_order).toHaveLength(1);
     } finally {
       await updateSettings({ questions_per_attempt: PER_ATTEMPT });
     }
@@ -129,7 +130,7 @@ describe("sửa câu hỏi", () => {
   it("để trống số câu mỗi lượt thì thí sinh làm hết ngân hàng", async () => {
     await updateSettings({ questions_per_attempt: 0 });
     const fullSession = await openSession(`${TAG} lượt full`, setId);
-    const joined = await joinSession({ code: "SE900006", fullName: "Làm hết đề" });
+    const joined = await joinSession({ code: "SE900006", fullName: "Làm hết đề", email: TEST_EMAIL });
     const participant = (await getParticipant((joined as { participantId: string }).participantId))!;
     expect(participant.question_order).toHaveLength(BANK_SIZE);
     await closeSession(fullSession);

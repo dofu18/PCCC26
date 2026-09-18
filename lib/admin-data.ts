@@ -248,9 +248,9 @@ export async function updateSettings(patch: Partial<Settings>): Promise<void> {
   const nextSettings = { ...current, ...patch };
   const { error } = await db()
     .from("app_settings")
-    .update({ 
+    .update({
       ...nextSettings,
-      updated_at: new Date().toISOString() 
+      updated_at: new Date().toISOString()
     })
     .eq("id", 1);
   if (error) throw new Error(`Không lưu được cấu hình: ${error.message}`);

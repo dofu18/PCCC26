@@ -166,6 +166,7 @@ describe("buildLeaderboardWorkbook", () => {
       session_id: "s1",
       code: "HE181902",
       full_name: "Lê Thu Hà",
+      email: "ha@example.com",
       display_name: "HE181902 - Lê Thu Hà",
       attempt_no: 1,
       started_at: "2026-08-31T07:20:00.000Z",
@@ -180,6 +181,7 @@ describe("buildLeaderboardWorkbook", () => {
       session_id: "s1",
       code: "HE180234",
       full_name: "Trần Minh Khôi",
+      email: "khoi@example.com",
       display_name: "HE180234 - Trần Minh Khôi",
       attempt_no: 2,
       started_at: "2026-08-31T07:20:30.000Z",
@@ -196,6 +198,7 @@ describe("buildLeaderboardWorkbook", () => {
       {
         code: "HE181902",
         full_name: "Lê Thu Hà",
+        email: "ha@example.com",
         order_index: 1,
         question: "Gọi PCCC số nào?",
         given_text: "114",
@@ -212,18 +215,18 @@ describe("buildLeaderboardWorkbook", () => {
       "Chi tiết trả lời",
     ]);
 
-    // Cột: Hạng · Mã số · Họ tên · Tên hiển thị · Số câu đúng · Số câu đã trả lời ·
+    // Cột: Hạng · Mã số · Họ tên · Email · Tên hiển thị · Số câu đúng · Số câu đã trả lời ·
     //       Tổng thời gian · Thời điểm nộp  (không còn cột Điểm)
     const board = wb.getWorksheet("Bảng xếp hạng")!;
     expect(board.getRow(1).getCell(1).value).toBe("Hạng");
     expect(board.getRow(1).values).not.toContain("Điểm");
     expect(board.getRow(2).getCell(3).value).toBe("Lê Thu Hà");
-    expect(board.getRow(2).getCell(5).value).toBe(9);
-    expect(board.getRow(3).getCell(8).value).toBe("chưa nộp");
+    expect(board.getRow(2).getCell(6).value).toBe(9);
+    expect(board.getRow(3).getCell(9).value).toBe("chưa nộp");
 
     const detail = wb.getWorksheet("Chi tiết trả lời")!;
     expect(detail.getRow(1).values).not.toContain("Điểm");
-    expect(detail.getRow(2).getCell(6).value).toBe("Đúng");
+    expect(detail.getRow(2).getCell(7).value).toBe("Đúng");
   });
 });
 

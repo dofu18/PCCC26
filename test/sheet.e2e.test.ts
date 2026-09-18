@@ -27,6 +27,7 @@ import { db } from "@/lib/supabase";
 import type { GivenAnswer } from "@/lib/types";
 
 const TAG = "[e2e-sheet]";
+const TEST_EMAIL = "e2e-sheet@example.com";
 let setId: string;
 let sessionId: string;
 
@@ -86,7 +87,11 @@ async function play(participantId: string, first: GivenAnswer) {
 
 describe("trang kết quả của thí sinh", () => {
   it("hiện đáp án đã chọn và đáp án đúng của câu trả lời sai", async () => {
-    const joined = await joinSession({ code: "SE910001", fullName: "Xem lại bài" });
+    const joined = await joinSession({
+      code: "SE910001",
+      fullName: "Xem lại bài",
+      email: TEST_EMAIL,
+    });
     const id = (joined as { participantId: string }).participantId;
 
     // Cố tình trả lời sai câu đầu tiên nếu nó là câu trắc nghiệm.
@@ -111,7 +116,7 @@ describe("trang kết quả của thí sinh", () => {
   });
 
   it("câu bỏ qua ghi rõ là không trả lời", async () => {
-    const joined = await joinSession({ code: "SE910002", fullName: "Hết giờ" });
+    const joined = await joinSession({ code: "SE910002", fullName: "Hết giờ", email: TEST_EMAIL });
     const id = (joined as { participantId: string }).participantId;
     await play(id, { kind: "skip" });
 
@@ -146,8 +151,8 @@ describe("trang bài làm chi tiết ở admin", () => {
     const sheet = await sessionSheet(sessionId);
     for (const person of sheet) {
       expect(person.correct_count).toBe(person.answers.filter((a) => a.is_correct).length);
-      // tổng thời gian suy nghĩ từng câu — đã trả lời thì phải dương
-      expect(person.total_time_ms).toBeGreaterThan(0);
+      // Trả lời hoặc bỏ qua ngay có thể có thời gian 0; không được âm.
+      expect(person.total_time_ms).toBeGreaterThanOrEqual(0);
     }
   });
 

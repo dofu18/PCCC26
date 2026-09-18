@@ -14,6 +14,7 @@ import { db } from "@/lib/supabase";
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const TAG = "[e2e-http]";
+const TEST_EMAIL = "e2e-http@example.com";
 
 /** Chuỗi này chỉ được xuất hiện SAU khi thí sinh đã trả lời. */
 const SECRET_EXPLANATION = "GIAI-THICH-KHONG-DUOC-RO-TRUOC";
@@ -61,7 +62,12 @@ beforeAll(async () => {
 
   sessionId = await openSession(`${TAG} lượt`, setId);
 
-  const join = await joinSession({ code: "HE101010", fullName: "Ngô Thanh Vân", force: true });
+  const join = await joinSession({
+    code: "HE101010",
+    fullName: "Ngô Thanh Vân",
+    email: TEST_EMAIL,
+    force: true,
+  });
   if (join.status !== "ok") throw new Error("join thất bại");
   participantCookie = `pccc_participant=${join.participantId}.${sign(join.participantId)}`;
 
